@@ -32,14 +32,13 @@ public class Device {
     /**
      * 所属房间ID, 外键关联到rooms表, 房间删除时此设备room_id置为NULL
      */
-    @Column(name = "room_id")
-    private Long roomId; // We'll likely map this to a Room entity later
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id", referencedColumnName = "id")
+    private Room room;
 
-    /**
-     * 关联的设备模板ID，外键关联到device_templates表
-     */
-    @Column(name = "device_template_id")
-    private Long deviceTemplateId; // We'll likely map this to a DeviceTemplate entity later
+    @ManyToOne(fetch = FetchType.LAZY) // LAZY is generally a good default
+    @JoinColumn(name = "device_template_id", referencedColumnName = "id") // Maps to the foreign key column
+    private DeviceTemplate deviceTemplate;
 
     // Constructors
     public Device() {
@@ -78,20 +77,20 @@ public class Device {
         this.status = status;
     }
 
-    public Long getRoomId() {
-        return roomId;
+    public Room getRoom() {
+        return room;
     }
 
-    public void setRoomId(Long roomId) {
-        this.roomId = roomId;
+    public void setRoom(Room room) {
+        this.room = room;
     }
 
-    public Long getDeviceTemplateId() {
-        return deviceTemplateId;
+    public DeviceTemplate getDeviceTemplate() {
+        return deviceTemplate;
     }
 
-    public void setDeviceTemplateId(Long deviceTemplateId) {
-        this.deviceTemplateId = deviceTemplateId;
+    public void setDeviceTemplate(DeviceTemplate deviceTemplate) {
+        this.deviceTemplate = deviceTemplate;
     }
 
     // toString() method (optional, but good for debugging)
@@ -102,8 +101,8 @@ public class Device {
                 ", name='" + name + '\'' +
                 ", installationDate=" + installationDate +
                 ", status='" + status + '\'' +
-                ", roomId=" + roomId +
-                ", deviceTemplateId=" + deviceTemplateId +
+                ", room=" + (room != null ? room.getId() : null) +
+                ", deviceTemplate=" + (deviceTemplate != null ? deviceTemplate.getId() : null) +
                 '}';
     }
 }
