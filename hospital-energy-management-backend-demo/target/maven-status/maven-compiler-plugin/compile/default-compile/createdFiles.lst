@@ -1,0 +1,4 @@
+com\hospital\energymgmt\model\User.class
+com\hospital\energymgmt\model\Role.class
+com\hospital\energymgmt\EnergyManagementApplication.class
+com\hospital\energymgmt\repository\UserRepository.class
