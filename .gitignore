@@ -3,3 +3,6 @@
 /hospital-energy-management-backend-demo/target
 /hospital-energy-frontend/node_modules
 *.class
+/hospital-energy-frontend/example
+/hospital-energy-frontend/src/assets
+/hospital-energy-management-backend-demo/src/main/resources/static
