@@ -16,15 +16,12 @@
         <el-input
           ref="username"
           v-model="loginForm.username"
-          placeholder="用户名"
+          placeholder="请输入用户名"
           name="username"
           type="text"
           tabindex="1"
           auto-complete="on"
         >
-          <span slot="prefix" class="svg-container">
-            <i class="el-icon-user"></i>
-          </span>
         </el-input>
       </el-form-item>
 
@@ -34,18 +31,12 @@
           ref="password"
           v-model="loginForm.password"
           :type="passwordType"
-          placeholder="密码"
+          placeholder="请输入密码"
           name="password"
           tabindex="2"
           auto-complete="on"
           @keyup.enter.native="handleLogin"
         >
-          <span slot="prefix" class="svg-container">
-            <i class="el-icon-lock"></i>
-          </span>
-          <span slot="suffix" class="show-pwd" @click="showPwd">
-            <i :class="passwordType === 'password' ? 'el-icon-view' : 'el-icon-minus'"></i>
-          </span>
         </el-input>
       </el-form-item>
 
@@ -66,8 +57,8 @@
 </template>
 
 <script>
-// 实际项目中，会从 src/api/auth.js 导入登录API
-// import { login } from '@/api/auth'; 
+import { login } from '@/api/auth';
+import { setToken, setUserInfo } from '@/utils/auth'; // 引入 setToken 和 setUserInfo
 
 export default {
   name: "LoginView",
@@ -80,7 +71,7 @@ export default {
       }
     };
     const validatePassword = (rule, value, callback) => {
-      if (value.length < 6) {
+      if (!value || value.length < 6) { // 确保密码不为空
         callback(new Error("密码不能少于6位"));
       } else {
         callback();
@@ -92,15 +83,11 @@ export default {
         password: "",
       },
       loginRules: {
-        username: [
-          { required: true, trigger: "blur", validator: validateUsername },
-        ],
-        password: [
-          { required: true, trigger: "blur", validator: validatePassword },
-        ],
+        username: [{ required: true, trigger: "blur", validator: validateUsername }],
+        password: [{ required: true, trigger: "blur", validator: validatePassword }],
       },
       loading: false,
-      passwordType: "password",
+      passwordType: "password", // 保持 password 类型以便 showPwd 功能 (如果实现)
       redirect: undefined,
     };
   },
@@ -114,8 +101,9 @@ export default {
   },
   methods: {
     showPwd() {
+      // 简单实现，如果需要更复杂的图标切换，可以扩展
       if (this.passwordType === "password") {
-        this.passwordType = "";
+        this.passwordType = "text";
       } else {
         this.passwordType = "password";
       }
@@ -123,50 +111,64 @@ export default {
         this.$refs.password.focus();
       });
     },
-    handleLogin() {
-      this.$refs.loginForm.validate((valid) => {
+    async handleLogin() { // 将外部方法也声明为 async
+      this.$refs.loginForm.validate(async (valid) => {
         if (valid) {
           this.loading = true;
-          // 模拟API调用
-          setTimeout(() => {
-            // 假设登录成功，实际应调用API并处理响应
-            // login(this.loginForm).then(response => {
-            //   const { data } = response;
-            //   localStorage.setItem('token', data.token); // 存储token
-            //   localStorage.setItem('user', JSON.stringify(data.user)); // 存储用户信息
-            //   this.$router.push({ path: this.redirect || '/' });
-            //   this.loading = false;
-            // }).catch(error => {
-            //   this.$message.error('登录失败，请检查用户名和密码');
-            //   this.loading = false;
-            // });
+          try {
+            const response = await login(this.loginForm);
+            
+            let tokenValue = null;
+            let userDetails = null;
 
-            // ---- 模拟代码开始 ----
-            if (this.loginForm.username === 'admin' && this.loginForm.password === '123456') {
-                localStorage.setItem('token', 'fake-admin-token');
-                localStorage.setItem('user', JSON.stringify({ username: 'admin', role: 'admin' }));
-                this.$router.push({ path: this.redirect || '/' });
-            } else if (this.loginForm.username === 'user' && this.loginForm.password === '123456') {
-                localStorage.setItem('token', 'fake-user-token');
-                localStorage.setItem('user', JSON.stringify({ username: 'user', role: 'user' }));
-                this.$router.push({ path: this.redirect || '/' });
-            } else {
-                this.$message.error('登录失败，用户名或密码错误');
+            // 根据后端实际返回的结构调整以下逻辑
+            // 常见结构: response.data 包含 { code, message, data: { token, user } }
+            // 或 response 直接是 { token, user }
+            // 或 response.data 直接是 token 字符串
+            if (response && response.data && typeof response.data.token === 'string') {
+              tokenValue = response.data.token;
+              userDetails = response.data.user; // 假设用户信息在 response.data.user
+            } else if (response && typeof response.token === 'string') {
+              tokenValue = response.token;
+              userDetails = response.user; // 假设用户信息在 response.user
+            } else if (response && typeof response === 'string') { // 如果API直接返回token字符串
+              tokenValue = response;
             }
-            this.loading = false;
-            // ---- 模拟代码结束 ----
+            // 也可能后端返回的 response 本身就是 data 对象，如：{ code, message, data: { token, user } }
+            // 这种情况下，request.js 中的拦截器已经处理了外层包装，response 就是 data
+            // 例如： if (response && typeof response.token === 'string') 
 
-          }, 500);
+            if (tokenValue) {
+              // 确保存储的 token 不包含 "Bearer " 前缀，因为 request.js 会添加它
+              if (tokenValue.startsWith("Bearer ")) {
+                tokenValue = tokenValue.substring(7);
+              }
+              setToken(tokenValue);
+              if (userDetails) {
+                setUserInfo(userDetails);
+              }
+              this.$router.push({ path: this.redirect || "/" });
+            } else {
+              // 如果 request.js 的响应拦截器没有处理业务错误提示，这里可以补充
+              this.$message.error( (response && response.message) || '登录失败：无法从响应中获取令牌');
+            }
+          } catch (error) {
+            // request.js 中的响应拦截器通常会处理HTTP错误和部分业务错误，并显示消息
+            // 此处的 catch 主要用于捕获 validate 失败后的Promise reject，或 login API调用本身抛出的未被拦截器处理的错误
+            console.error("LoginView.vue - handleLogin error:", error);
+            // 如果需要，可以在这里添加额外的用户提示，但要注意避免与拦截器中的提示重复
+            // this.$message.error('登录请求处理异常，请稍后再试');
+          } finally {
+            this.loading = false;
+          }
         } else {
-          console.log("error submit!!");
+          console.log("表单验证失败!");
           return false;
         }
       });
     },
     handleRegister() {
-      // 跳转到注册页面，如果需要的话
-      // this.$router.push('/register');
-      this.$message("注册功能暂未开放");
+      this.$router.push('/register');
     },
   },
 };
@@ -226,25 +228,32 @@ export default {
   color: #454545;
 }
 
+/* Element UI input 在 el-form-item 中可能需要调整样式以匹配设计 */
+/* 以下样式仅为示例，可能需要根据实际情况调整 */
 .el-input {
   display: inline-block;
-  height: 47px;
-  width: 85%;
+  /* height: 47px; */ /* el-input 有自己的高度控制 */
+  width: 100%; /* 通常 input 宽度占满 form-item */
 }
 
+/* 如果需要自定义 input 内部样式，可以像之前那样针对原生 input 元素 */
+/* 但通常 Element UI 的组件封装得比较好，直接使用其属性和插槽即可 */
+/*
 input {
   background: transparent;
   border: 0px;
   -webkit-appearance: none;
+  appearance: none; 
   border-radius: 0px;
   padding: 12px 5px 12px 15px;
-  color: #333; /* 输入文字颜色 */
+  color: #333; 
   height: 47px;
-  caret-color: #606266; /* 光标颜色 */
+  caret-color: #606266; 
 
   &:-webkit-autofill {
-    box-shadow: 0 0 0px 1000px #f0f2f5 inset !important; /* 浏览器自动填充背景色 */
-    -webkit-text-fill-color: #333 !important; /* 浏览器自动填充文字颜色 */
+    box-shadow: 0 0 0px 1000px #f0f2f5 inset !important; 
+    -webkit-text-fill-color: #333 !important;
   }
 }
+*/
 </style>

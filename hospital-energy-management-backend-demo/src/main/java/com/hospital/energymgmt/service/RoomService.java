@@ -4,6 +4,8 @@ import com.hospital.energymgmt.dto.RoomDto;
 import com.hospital.energymgmt.model.Room;
 import com.hospital.energymgmt.repository.RoomRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,10 +65,9 @@ public class RoomService {
     }
 
     @Transactional(readOnly = true)
-    public List<RoomDto> getAllRooms() {
-        return roomRepository.findAll().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+    public Page<RoomDto> getAllRooms(Pageable pageable) {
+        Page<Room> roomPage = roomRepository.findAll(pageable);
+        return roomPage.map(this::convertToDto);
     }
 
     @Transactional(readOnly = true)

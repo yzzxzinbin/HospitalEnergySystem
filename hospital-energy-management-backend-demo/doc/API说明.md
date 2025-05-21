@@ -5,15 +5,18 @@
 ### 1.1. 用户登录
 *   **POST** `/api/auth/login`
     *   **说明:** 用户使用用户名和密码进行登录。
-    *   **请求体:** `LoginRequest` (包含 `username` 和 `password`)
-    *   **成功响应 (200 OK):** 返回 `User` 对象。
-    *   **失败响应 (401 Unauthorized):** "Invalid username or password"
+    *   **请求体:** `LoginRequestDto` (包含 `username` 和 `password`)
+    *   **成功响应 (200 OK):** 返回 `LoginResponseDto` 对象 (包含 `token` 和 `username`)。
+    *   **失败响应 (401 Unauthorized / 403 Forbidden):** 
+        *   "Invalid username or password." (凭证无效)
+        *   "User account is disabled." (用户被禁用)
+        *   "Login failed: An unexpected error occurred." (其他登录错误)
 
 ### 1.2. 用户注册
 *   **POST** `/api/auth/register`
     *   **说明:** 注册新用户。
-    *   **请求体:** `RegistrationRequest` (包含 `username`, `password`, `email`)
-    *   **成功响应 (201 CREATED):** 返回创建的 `User` 对象。
+    *   **请求体:** `RegistrationRequestDto` (包含 `username`, `password`, `email`)
+    *   **成功响应 (201 CREATED):** 返回成功消息字符串，例如: "User registered successfully. Please login."
     *   **失败响应 (400 Bad Request):** "Registration failed: \[错误信息]"
 
 ## 2. User Management API (`/api/users`)
@@ -33,8 +36,12 @@
 
 ### 2.3. 获取所有用户
 *   **GET** `/api/users`
-    *   **说明:** 获取所有用户列表。
-    *   **成功响应 (200 OK):** 返回 `UserDto` 对象列表。
+    *   **说明:** 获取所有用户列表。支持分页和排序。
+    *   **请求参数 (Query Parameters):**
+        *   `page` (可选, 默认为 0): 页码 (0-indexed)。
+        *   `size` (可选, 默认为 10): 每页记录数。
+        *   `sort` (可选, 默认为 "id,asc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `username,desc`。
+    *   **成功响应 (200 OK):** 返回 `PageResponseDto<UserDto>` 对象，包含 `records` (用户列表), `total` (总记录数), `currentPage`, `pageSize`, `totalPages`。
 
 ### 2.4. 更新用户
 *   **PUT** `/api/users/{id}`
@@ -62,8 +69,12 @@
 
 ### 3.2. 获取所有房间
 *   **GET** `/api/rooms`
-    *   **说明:** 获取所有房间信息列表。
-    *   **成功响应 (200 OK):** 返回 `RoomDto` 对象列表。
+    *   **说明:** 获取所有房间信息列表。支持分页和排序。
+    *   **请求参数 (Query Parameters):**
+        *   `page` (可选, 默认为 0): 页码 (0-indexed)。
+        *   `size` (可选, 默认为 10): 每页记录数。
+        *   `sort` (可选, 默认为 "id,asc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `roomNumber,desc`。
+    *   **成功响应 (200 OK):** 返回 `PageResponseDto<RoomDto>` 对象，包含 `records` (房间列表), `total` (总记录数), `currentPage`, `pageSize`, `totalPages`。
 
 ### 3.3. 根据ID获取房间
 *   **GET** `/api/rooms/{id}`
@@ -117,8 +128,12 @@
 
 ### 4.2. 获取所有设备模板
 *   **GET** `/api/device-templates`
-    *   **说明:** 获取所有设备模板列表。
-    *   **成功响应 (200 OK):** 返回 `DeviceTemplateDto` 对象列表。
+    *   **说明:** 获取所有设备模板列表。支持分页和排序。
+    *   **请求参数 (Query Parameters):**
+        *   `page` (可选, 默认为 0): 页码 (0-indexed)。
+        *   `size` (可选, 默认为 10): 每页记录数。
+        *   `sort` (可选, 默认为 "id,asc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `manufacturer,asc`。
+    *   **成功响应 (200 OK):** 返回 `PageResponseDto<DeviceTemplateDto>` 对象，包含 `records` (设备模板列表), `total` (总记录数), `currentPage`, `pageSize`, `totalPages`。
 
 ### 4.3. 根据ID获取设备模板
 *   **GET** `/api/device-templates/{id}`
@@ -172,8 +187,12 @@
 
 ### 5.2. 获取所有设备
 *   **GET** `/api/devices`
-    *   **说明:** 获取所有设备实例列表。
-    *   **成功响应 (200 OK):** 返回 `DeviceDto` 对象列表。
+    *   **说明:** 获取所有设备实例列表。支持分页和排序。
+    *   **请求参数 (Query Parameters):**
+        *   `page` (可选, 默认为 0): 页码 (0-indexed)。
+        *   `size` (可选, 默认为 10): 每页记录数。
+        *   `sort` (可选, 默认为 "id,asc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `name,desc`。
+    *   **成功响应 (200 OK):** 返回 `PageResponseDto<DeviceDto>` 对象，包含 `records` (设备列表), `total` (总记录数), `currentPage`, `pageSize`, `totalPages`。
 
 ### 5.3. 根据ID获取设备
 *   **GET** `/api/devices/{id}`
@@ -235,8 +254,12 @@
 
 ### 6.3. 获取所有能源数据记录
 *   **GET** `/api/energy-data`
-    *   **说明:** 获取所有能源数据记录列表。
-    *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
+    *   **说明:** 获取所有能源数据记录列表。支持分页和排序。
+    *   **请求参数 (Query Parameters):**
+        *   `page` (可选, 默认为 0): 页码 (0-indexed)。
+        *   `size` (可选, 默认为 10): 每页记录数。
+        *   `sort` (可选, 默认为 "id,asc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `timestamp,desc`。
+    *   **成功响应 (200 OK):** 返回 `PageResponseDto<EnergyDataDto>` 对象，包含 `records` (能源数据列表), `total` (总记录数), `currentPage`, `pageSize`, `totalPages`。
 
 ### 6.4. 更新能源数据记录
 *   **PUT** `/api/energy-data/{id}`

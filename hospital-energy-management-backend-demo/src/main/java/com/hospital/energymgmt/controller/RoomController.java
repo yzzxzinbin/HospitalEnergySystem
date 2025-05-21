@@ -1,8 +1,13 @@
 package com.hospital.energymgmt.controller;
 
+import com.hospital.energymgmt.dto.PageResponseDto;
 import com.hospital.energymgmt.dto.RoomDto;
 import com.hospital.energymgmt.service.RoomService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,9 +36,25 @@ public class RoomController {
     }
 
     @GetMapping
-    public ResponseEntity<List<RoomDto>> getAllRooms() {
-        List<RoomDto> rooms = roomService.getAllRooms();
-        return ResponseEntity.ok(rooms);
+    public ResponseEntity<PageResponseDto<RoomDto>> getAllRooms(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String[] sort) {
+
+        String sortField = sort[0];
+        String sortDirection = sort.length > 1 ? sort[1] : "asc";
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+
+        Page<RoomDto> roomPage = roomService.getAllRooms(pageable);
+        PageResponseDto<RoomDto> response = new PageResponseDto<>(
+                roomPage.getContent(),
+                roomPage.getTotalElements(),
+                roomPage.getNumber(),
+                roomPage.getSize(),
+                roomPage.getTotalPages()
+        );
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

@@ -10,6 +10,12 @@ const routes = [
     name: 'Login',
     component: () => import('../views/LoginView.vue'),
   },
+  // 注册页
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/RegisterView.vue'),
+  },
   // 主布局页
   {
     path: '/',
@@ -77,15 +83,21 @@ const router = new VueRouter({
 
 // 导航守卫，用于权限控制等
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem('token'); // 简单示例，实际应更复杂
+  const isAuthenticated = !!localStorage.getItem('token');
+  const publicPages = ['Login', 'Register']; // 允许未登录访问的页面
+  const authRequired = !publicPages.includes(to.name);
 
-  if (to.name !== 'Login' && !isAuthenticated) {
-    next({ name: 'Login' });
-  } else if (to.name === 'Login' && isAuthenticated) {
-    next({ name: 'Dashboard' });
-  } else {
-    next();
+  if (authRequired && !isAuthenticated) {
+    // 如果访问的是需要认证的页面且用户未认证，则跳转到登录页
+    return next({ name: 'Login' });
   }
+
+  if (publicPages.includes(to.name) && isAuthenticated) {
+    // 如果用户已认证，但访问的是登录或注册页面，则跳转到仪表盘
+    return next({ name: 'Dashboard' }); 
+  }
+
+  next(); // 其他情况正常放行
 });
 
 export default router;

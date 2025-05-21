@@ -1,39 +1,60 @@
 package com.hospital.energymgmt.config;
 
+import com.hospital.energymgmt.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.crypto.password.PasswordEncoder; // 确保导入
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-    // 从 SecurityConfig 中移除 PasswordEncoder Bean 的定义
-    // @Bean
-    // public PasswordEncoder passwordEncoder() {
-    //     return new BCryptPasswordEncoder();
-    // }
+    @Autowired
+    private UserService userService;
 
     @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth, PasswordEncoder passwordEncoder) throws Exception { // 修改这里
-        auth
-            .inMemoryAuthentication()
-                .withUser("admin")
-                .password(passwordEncoder.encode("admin_password")) // 使用注入的 passwordEncoder
-                .roles("ADMIN", "USER"); // 你可以根据需要分配角色
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @Autowired
+    private JwtRequestFilter jwtRequestFilter;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userService).passwordEncoder(passwordEncoder);
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-            .csrf().disable()
-            .authorizeRequests()
-                .antMatchers(
-                    "/api/auth/**",
+    protected void configure(HttpSecurity httpSecurity) throws Exception {
+        httpSecurity.csrf().disable()
+                .authorizeRequests().antMatchers(
+                    "/", // 允许访问根路径
+                    "/index.html", // 允许访问 index.html
+                    "/login",         // 新增：允许访问前端登录页
+                    "/register",      // 新增：允许访问前端注册页
+                    "/favicon.ico", // 允许访问 favicon
+                    "/css/**", // 允许访问所有 CSS 文件
+                    "/js/**", // 允许访问所有 JavaScript 文件
+                    "/fonts/**", // 允许访问所有字体文件
+                    // Consider adding /img/** if you have images directly under static/img
+                    "/api/auth/login",
+                    "/api/auth/register",
                     // Swagger UI v2
                     "/v2/api-docs",
                     "/swagger-resources",
@@ -45,16 +66,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     // Swagger UI v3 (OpenAPI)
                     "/v3/api-docs/**",
                     "/swagger-ui/**"
-                ).permitAll() // 允许访问认证API和Swagger UI
-                .anyRequest().authenticated() // 其他所有请求都需要认证
-            .and()
-            .formLogin() // 启用表单登录
-                // .loginPage("/login") // 如果你有自定义登录页面，可以在这里指定
-                .permitAll() // 允许所有人访问登录页面
-            .and()
-            .logout()
-                .permitAll() // 允许所有人访问登出
-            .and()
-            .httpBasic(); // 启用HTTP Basic认证
+                ).permitAll()
+                .anyRequest().authenticated().and()
+                .exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint).and()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        httpSecurity.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
     }
 }

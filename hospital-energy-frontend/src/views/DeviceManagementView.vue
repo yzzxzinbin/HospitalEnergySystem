@@ -1,56 +1,72 @@
 <template>
   <div class="device-management-container">
     <el-card class="box-card">
-      <div slot="header" class="clearfix">
-        <span>设备列表</span>
-        <el-button style="float: right;" type="primary" icon="el-icon-plus" @click="handleAddDevice">新增设备</el-button>
-      </div>
-
-      <!-- 搜索和筛选区域 -->
-      <el-form :inline="true" :model="searchParams" class="demo-form-inline mb-20">
+      <el-form :inline="true" :model="searchParams" class="demo-form-inline">
         <el-form-item label="设备名称">
-          <el-input v-model="searchParams.name" placeholder="请输入设备名称"></el-input>
+          <el-input v-model="searchParams.name" placeholder="设备名称"></el-input>
         </el-form-item>
         <el-form-item label="所属房间">
-          <el-select v-model="searchParams.roomId" placeholder="请选择房间" clearable filterable>
+          <el-select v-model="searchParams.roomId" placeholder="选择房间" clearable>
             <el-option v-for="room in roomOptions" :key="room.id" :label="room.roomNumber + ' (' + room.department + ')'" :value="room.id"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="设备状态">
-          <el-select v-model="searchParams.status" placeholder="请选择状态" clearable>
+          <el-select v-model="searchParams.status" placeholder="设备状态" clearable>
             <el-option label="在线" value="online"></el-option>
             <el-option label="离线" value="offline"></el-option>
             <el-option label="故障" value="faulty"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" icon="el-icon-search" @click="handleSearch">查询</el-button>
-          <el-button icon="el-icon-refresh" @click="resetSearch">重置</el-button>
+          <el-button type="primary" @click="handleSearch" icon="el-icon-search">查询</el-button>
+          <el-button @click="resetSearch" icon="el-icon-refresh">重置</el-button>
         </el-form-item>
       </el-form>
 
-      <!-- 设备列表表格 -->
-      <el-table :data="deviceList" v-loading="loading" style="width: 100%" border>
-        <el-table-column prop="id" label="ID" width="80" align="center"></el-table-column>
-        <el-table-column prop="name" label="设备名称" align="center"></el-table-column>
-        <el-table-column prop="roomName" label="所属房间" align="center"></el-table-column> <!-- 假设后端会返回房间名 -->
-        <el-table-column prop="templateName" label="设备型号" align="center"></el-table-column> <!-- 假设后端会返回模板名 -->
-        <el-table-column prop="status" label="状态" align="center">
+      <el-button type="primary" icon="el-icon-plus" @click="handleAddDevice" style="margin-bottom: 20px;">新增设备</el-button>
+
+      <el-table
+        v-loading="loading"
+        :data="deviceList"
+        style="width: 100%"
+        border
+        stripe>
+        <el-table-column prop="name" label="设备名称" width="180"></el-table-column>
+        <el-table-column label="所属房间" width="200">
+          <template slot-scope="scope">
+            {{ scope.row.room ? scope.row.room.roomNumber + ' (' + scope.row.room.department + ')' : 'N/A' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="设备模板" width="220">
+          <template slot-scope="scope">
+            {{ scope.row.deviceTemplate ? scope.row.deviceTemplate.manufacturer + ' - ' + scope.row.deviceTemplate.model : 'N/A' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="installationDate" label="安装日期" width="150">
+            <template slot-scope="scope">
+                {{ scope.row.installationDate | formatDate }}
+            </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100" align="center">
           <template slot-scope="scope">
             <el-tag :type="statusTagType(scope.row.status)">{{ formatStatus(scope.row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="installationDate" label="安装日期" align="center"></el-table-column>
-        <el-table-column label="操作" width="280" align="center">
+        <el-table-column prop="lastOnlineTime" label="最后上线时间" width="180">
+            <template slot-scope="scope">
+                {{ scope.row.lastOnlineTime | formatDateTime }}
+            </template>
+        </el-table-column>
+        <el-table-column prop="remarks" label="备注"></el-table-column>
+        <el-table-column label="操作" width="280" fixed="right" align="center">
           <template slot-scope="scope">
-            <el-button size="mini" type="info" icon="el-icon-view" @click="handleViewDevice(scope.row)">详情</el-button>
-            <el-button size="mini" type="warning" icon="el-icon-edit" @click="handleEditDevice(scope.row)">编辑</el-button>
-            <el-button size="mini" type="danger" icon="el-icon-delete" @click="handleDeleteDevice(scope.row)">删除</el-button>
+            <el-button size="mini" type="text" icon="el-icon-view" @click="handleViewDevice(scope.row)">详情</el-button>
+            <el-button size="mini" type="text" icon="el-icon-edit" @click="handleEditDevice(scope.row)">编辑</el-button>
+            <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDeleteDevice(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- 分页组件 -->
       <el-pagination
         style="margin-top: 20px; text-align: right;"
         @size-change="handleSizeChange"
@@ -64,61 +80,74 @@
     </el-card>
 
     <!-- 新增/编辑设备对话框 -->
-    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="40%" @close="resetForm('deviceForm')">
-      <el-form :model="deviceForm" :rules="deviceRules" ref="deviceForm" label-width="100px">
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="50%" @close="resetForm('deviceForm')">
+      <el-form :model="deviceForm" :rules="deviceRules" ref="deviceForm" label-width="120px">
         <el-form-item label="设备名称" prop="name">
           <el-input v-model="deviceForm.name" placeholder="请输入设备名称"></el-input>
         </el-form-item>
         <el-form-item label="所属房间" prop="roomId">
-          <el-select v-model="deviceForm.roomId" placeholder="请选择房间" filterable style="width:100%;">
+          <el-select v-model="deviceForm.roomId" placeholder="请选择所属房间" style="width: 100%;">
             <el-option v-for="room in roomOptions" :key="room.id" :label="room.roomNumber + ' (' + room.department + ')'" :value="room.id"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="设备模板" prop="templateId">
-           <el-select v-model="deviceForm.templateId" placeholder="请选择设备模板" filterable style="width:100%;">
-            <el-option v-for="template in templateOptions" :key="template.id" :label="template.manufacturer + ' - ' + template.model" :value="template.id"></el-option>
+          <el-select v-model="deviceForm.templateId" placeholder="请选择设备模板" style="width: 100%;">
+            <el-option v-for="template in templateOptions" :key="template.id" :label="template.manufacturer + ' - ' + template.model + ' (' + template.category + ')'" :value="template.id"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="安装日期" prop="installationDate">
-          <el-date-picker v-model="deviceForm.installationDate" type="date" placeholder="选择日期" style="width:100%;" value-format="yyyy-MM-dd"></el-date-picker>
+          <el-date-picker
+            v-model="deviceForm.installationDate"
+            type="date"
+            placeholder="选择安装日期"
+            value-format="yyyy-MM-dd"
+            style="width: 100%;">
+          </el-date-picker>
         </el-form-item>
         <el-form-item label="设备状态" prop="status">
-          <el-select v-model="deviceForm.status" placeholder="请选择状态" style="width:100%;">
+          <el-select v-model="deviceForm.status" placeholder="请选择设备状态" style="width: 100%;">
             <el-option label="在线" value="online"></el-option>
             <el-option label="离线" value="offline"></el-option>
             <el-option label="故障" value="faulty"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remarks">
-          <el-input type="textarea" v-model="deviceForm.remarks" placeholder="请输入备注信息"></el-input>
+          <el-input type="textarea" v-model="deviceForm.remarks" placeholder="请输入备注"></el-input>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="submitDeviceForm">确 定</el-button>
+        <el-button type="primary" @click="submitDeviceForm" :loading="formLoading">确 定</el-button>
       </span>
     </el-dialog>
 
     <!-- 设备详情抽屉 -->
     <el-drawer
-      title="设备详情"
+      :title="currentDevice.name ? '设备详情: ' + currentDevice.name : '设备详情'"
       :visible.sync="drawerVisible"
       direction="rtl"
       size="40%">
-      <div style="padding: 20px;">
+      <div v-if="currentDevice.id" style="padding: 20px;">
         <el-descriptions :column="1" border>
-            <el-descriptions-item label="设备ID">{{ currentDevice.id }}</el-descriptions-item>
-            <el-descriptions-item label="设备名称">{{ currentDevice.name }}</el-descriptions-item>
-            <el-descriptions-item label="所属房间">{{ currentDevice.roomName }}</el-descriptions-item>
-            <el-descriptions-item label="设备型号">{{ currentDevice.templateName }}</el-descriptions-item>
-            <el-descriptions-item label="状态">
-                <el-tag :type="statusTagType(currentDevice.status)">{{ formatStatus(currentDevice.status) }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="安装日期">{{ currentDevice.installationDate }}</el-descriptions-item>
-            <el-descriptions-item label="最后上线时间">{{ currentDevice.lastOnlineTime || 'N/A' }}</el-descriptions-item>
-            <el-descriptions-item label="备注">{{ currentDevice.remarks || '无' }}</el-descriptions-item>
+          <el-descriptions-item label="设备ID">{{ currentDevice.id }}</el-descriptions-item>
+          <el-descriptions-item label="设备名称">{{ currentDevice.name }}</el-descriptions-item>
+          <el-descriptions-item label="所属房间">
+            {{ currentDevice.room ? currentDevice.room.roomNumber + ' (' + currentDevice.room.department + ')' : 'N/A' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="设备模板">
+            {{ currentDevice.deviceTemplate ? currentDevice.deviceTemplate.manufacturer + ' - ' + currentDevice.deviceTemplate.model + ' (' + currentDevice.deviceTemplate.category + ')' : 'N/A' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="安装日期">{{ currentDevice.installationDate | formatDate }}</el-descriptions-item>
+          <el-descriptions-item label="当前状态">
+            <el-tag :type="statusTagType(currentDevice.status)">{{ formatStatus(currentDevice.status) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="最后上线时间">{{ currentDevice.lastOnlineTime | formatDateTime }}</el-descriptions-item>
+          <el-descriptions-item label="备注">{{ currentDevice.remarks || '无' }}</el-descriptions-item>
         </el-descriptions>
         <!-- 可以在这里添加更多设备相关信息，如实时数据、控制按钮等 -->
+      </div>
+      <div v-else style="padding: 20px; text-align: center;">
+        <p>暂无设备详情</p>
       </div>
     </el-drawer>
 
@@ -126,23 +155,35 @@
 </template>
 
 <script>
-// 实际项目中会从 src/api/device.js, src/api/room.js, src/api/deviceTemplate.js 导入 API
-// import { getDevices, createDevice, updateDevice, deleteDevice, getDeviceById } from '@/api/device';
-// import { getRooms } from '@/api/room';
-// import { getDeviceTemplates } from '@/api/deviceTemplate';
+import { getDevices, createDevice, updateDevice, deleteDevice, getDeviceById } from '@/api/device';
+import { getRooms } from '@/api/room';
+import { getDeviceTemplates } from '@/api/deviceTemplate';
+import { parseTime } from '@/utils'; // 假设你有一个日期格式化工具
 
 export default {
   name: "DeviceManagementView",
+  filters: {
+    formatDate(time) {
+      if (!time) return 'N/A';
+      return parseTime(time, '{y}-{m}-{d}');
+    },
+    formatDateTime(time) {
+      if (!time) return 'N/A';
+      return parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}');
+    }
+  },
   data() {
     return {
       loading: false,
+      formLoading: false, // 用于表单提交按钮的loading状态
       deviceList: [],
-      roomOptions: [], // 房间选项，用于下拉选择
-      templateOptions: [], // 设备模板选项
+      roomOptions: [],
+      templateOptions: [],
       searchParams: {
         name: "",
         roomId: null,
         status: "",
+        // API 可能需要的其他搜索参数，例如 deviceTemplateId
       },
       pagination: {
         currentPage: 1,
@@ -154,10 +195,10 @@ export default {
       deviceForm: {
         id: null,
         name: "",
-        roomId: null,
-        templateId: null,
+        roomId: null, // 存储房间ID
+        templateId: null, // 存储设备模板ID
         installationDate: "",
-        status: "online",
+        status: "online", // 默认值
         remarks: "",
       },
       deviceRules: {
@@ -168,23 +209,7 @@ export default {
         status: [{ required: true, message: "请选择设备状态", trigger: "change" }],
       },
       drawerVisible: false,
-      currentDevice: {},
-      // 模拟数据
-      mockDeviceData: [
-        { id: 1, name: '空调A', roomId: 1, roomName: '101 (门诊部)', templateId: 1, templateName: '格力 KFR-35GW', status: 'online', installationDate: '2023-01-15', lastOnlineTime: '2025-05-21 10:00', remarks: '主楼空调' },
-        { id: 2, name: '照明灯B', roomId: 2, roomName: '102 (门诊部)', templateId: 2, templateName: '飞利浦 LED筒灯', status: 'offline', installationDate: '2023-02-20', lastOnlineTime: '2025-05-20 18:00', remarks: '' },
-        { id: 3, name: '电梯C', roomId: 3, roomName: '201 (住院部)', templateId: 3, templateName: '三菱 Maxiez', status: 'faulty', installationDate: '2022-12-10', lastOnlineTime: '2025-05-21 08:30', remarks: '传感器故障' },
-      ],
-      mockRoomData: [
-        { id: 1, roomNumber: '101', department: '门诊部' },
-        { id: 2, roomNumber: '102', department: '门诊部' },
-        { id: 3, roomNumber: '201', department: '住院部' },
-      ],
-      mockTemplateData: [
-        { id: 1, manufacturer: '格力', model: 'KFR-35GW', category: '空调' },
-        { id: 2, manufacturer: '飞利浦', model: 'LED筒灯', category: '照明' },
-        { id: 3, manufacturer: '三菱', model: 'Maxiez', category: '电梯' },
-      ]
+      currentDevice: {}, // 用于存储当前查看或编辑的设备完整信息
     };
   },
   created() {
@@ -196,34 +221,77 @@ export default {
       this.fetchRoomOptions();
       this.fetchTemplateOptions();
     },
-    fetchDeviceList() {
+    async fetchDeviceList() {
       this.loading = true;
-      // 模拟API调用
-      setTimeout(() => {
-        let filteredData = this.mockDeviceData.filter(item => {
-          return (
-            (this.searchParams.name ? item.name.includes(this.searchParams.name) : true) &&
-            (this.searchParams.roomId ? item.roomId === this.searchParams.roomId : true) &&
-            (this.searchParams.status ? item.status === this.searchParams.status : true)
-          );
-        });
-        this.pagination.total = filteredData.length;
-        const start = (this.pagination.currentPage - 1) * this.pagination.pageSize;
-        const end = start + this.pagination.pageSize;
-        this.deviceList = filteredData.slice(start, end);
+      try {
+        const params = {
+          page: this.pagination.currentPage,
+          size: this.pagination.pageSize,
+          name: this.searchParams.name || undefined, // 后端可能不需要空字符串
+          roomId: this.searchParams.roomId || undefined,
+          status: this.searchParams.status || undefined,
+          // 如果API支持按模板ID搜索，可以添加 templateId: this.searchParams.templateId || undefined
+        };
+        // 清理未定义的参数，避免发送空的查询参数
+        Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
+
+        const response = await getDevices(params);
+        // 假设API返回的数据结构是 { data: { records: [], total: 0 } } 或类似分页结构
+        // 请根据你的API实际返回结构调整
+        if (response && response.data && Array.isArray(response.data.records)) {
+          this.deviceList = response.data.records;
+          this.pagination.total = response.data.total || response.data.records.length; // 兼容不同分页返回
+        } else if (response && Array.isArray(response.data)) { // 如果直接返回数组
+            this.deviceList = response.data;
+            this.pagination.total = response.data.length; // 可能需要后端支持分页参数
+        } else {
+          this.deviceList = [];
+          this.pagination.total = 0;
+          this.$message.error('获取设备列表失败: 数据格式不正确');
+        }
+      } catch (error) {
+        console.error("Error fetching device list:", error);
+        this.$message.error(`获取设备列表失败: ${error.message || '请稍后重试'}`);
+        this.deviceList = [];
+        this.pagination.total = 0;
+      } finally {
         this.loading = false;
-      }, 500);
-      // 实际API: getDevices({ ...this.searchParams, page: this.pagination.currentPage, size: this.pagination.pageSize })
+      }
     },
-    fetchRoomOptions() {
-      // 模拟API调用
-      this.roomOptions = this.mockRoomData;
-      // 实际API: getRooms({ pageSize: -1 }) // 获取所有房间用于下拉
+    async fetchRoomOptions() {
+      try {
+        // 获取所有房间用于下拉，通常不分页或用一个很大的size
+        const response = await getRooms({ pageSize: -1 }); // 假设 pageSize: -1 获取所有
+        if (response && response.data && Array.isArray(response.data.records)) {
+            this.roomOptions = response.data.records;
+        } else if (response && Array.isArray(response.data)) {
+            this.roomOptions = response.data;
+        } else {
+            this.roomOptions = [];
+            this.$message.error('获取房间选项失败');
+        }
+      } catch (error) {
+        console.error("Error fetching room options:", error);
+        this.$message.error(`获取房间选项失败: ${error.message}`);
+        this.roomOptions = [];
+      }
     },
-    fetchTemplateOptions() {
-      // 模拟API调用
-      this.templateOptions = this.mockTemplateData;
-      // 实际API: getDeviceTemplates({ pageSize: -1 })
+    async fetchTemplateOptions() {
+      try {
+        const response = await getDeviceTemplates({ pageSize: -1 }); // 假设 pageSize: -1 获取所有
+         if (response && response.data && Array.isArray(response.data.records)) {
+            this.templateOptions = response.data.records;
+        } else if (response && Array.isArray(response.data)) {
+            this.templateOptions = response.data;
+        } else {
+            this.templateOptions = [];
+            this.$message.error('获取设备模板选项失败');
+        }
+      } catch (error) {
+        console.error("Error fetching template options:", error);
+        this.$message.error(`获取设备模板选项失败: ${error.message}`);
+        this.templateOptions = [];
+      }
     },
     handleSearch() {
       this.pagination.currentPage = 1;
@@ -235,75 +303,133 @@ export default {
     },
     handleAddDevice() {
       this.dialogTitle = "新增设备";
-      this.deviceForm = { id: null, name: "", roomId: null, templateId: null, installationDate: "", status: "online", remarks: "" };
+      // 重置表单，确保没有上次编辑的残留数据
+      this.deviceForm = {
+        id: null,
+        name: "",
+        roomId: null,
+        templateId: null,
+        installationDate: parseTime(new Date(), '{y}-{m}-{d}'), // 默认当天
+        status: "online",
+        remarks: "",
+      };
+      if (this.$refs.deviceForm) {
+        this.$refs.deviceForm.clearValidate(); // 清除校验状态
+      }
       this.dialogVisible = true;
     },
-    handleEditDevice(row) {
+    async handleEditDevice(row) {
       this.dialogTitle = "编辑设备";
-      this.deviceForm = { ...row }; // 确保所有字段都被正确填充
-      this.dialogVisible = true;
+      // 为了获取最新的、完整的设备信息，可以考虑从API获取
+      // 如果列表信息已经足够，可以直接使用 row
+      // this.currentDevice = { ...row }; // 浅拷贝一份数据到表单
+      // this.deviceForm = { ...row };
+      try {
+        const response = await getDeviceById(row.id);
+        if (response && response.data) {
+          this.deviceForm = { ...response.data };
+          // API返回的 deviceTemplate 和 room 可能是对象，表单需要的是ID
+          this.deviceForm.roomId = response.data.room ? response.data.room.id : null;
+          this.deviceForm.templateId = response.data.deviceTemplate ? response.data.deviceTemplate.id : null;
+          this.dialogVisible = true;
+        } else {
+          this.$message.error('获取设备详情失败');
+        }
+      } catch (error) {
+        this.$message.error(`获取设备详情失败: ${error.message}`);
+      }
     },
-    handleViewDevice(row) {
-        // 模拟获取设备详细信息
-        // 实际项目中，如果列表信息不全，可能需要根据 row.id 再次调用API获取完整详情
-        // getDeviceById(row.id).then(res => { this.currentDevice = res.data; this.drawerVisible = true; });
-        this.currentDevice = { ...row }; // 使用列表数据，如果包含足够信息
+    async handleViewDevice(row) {
         this.drawerVisible = true;
+        this.currentDevice = {}; // 先清空，显示加载状态或避免旧数据闪烁
+        try {
+            const response = await getDeviceById(row.id);
+            if (response && response.data) {
+                this.currentDevice = response.data;
+            } else {
+                this.$message.error('获取设备详情失败');
+                this.currentDevice = { name: row.name }; // 至少显示个名字
+            }
+        } catch (error) {
+            console.error("Error fetching device details for view:", error);
+            this.$message.error(`获取设备详情失败: ${error.message}`);
+            this.currentDevice = { name: row.name };
+        }
     },
     handleDeleteDevice(row) {
-      this.$confirm(`确定删除设备 ${row.name} 吗?`, "提示", {
-        confirmButtonText: "确定",
+      this.$confirm(`确定删除设备 ${row.name} 吗? 此操作不可恢复。`, "警告", {
+        confirmButtonText: "确定删除",
         cancelButtonText: "取消",
         type: "warning",
-      }).then(() => {
-        // 模拟API
-        this.mockDeviceData = this.mockDeviceData.filter(item => item.id !== row.id);
-        this.fetchDeviceList();
-        this.$message({ type: "success", message: "删除成功!" });
-        // 实际API: deleteDevice(row.id).then(...)
+      }).then(async () => {
+        try {
+          await deleteDevice(row.id);
+          this.$message({ type: "success", message: "删除成功!" });
+          this.fetchDeviceList(); // 刷新列表
+        } catch (error) {
+          console.error("Error deleting device:", error);
+          this.$message.error(`删除失败: ${error.message || '请稍后重试'}`);
+        }
       }).catch(() => {
         this.$message({ type: "info", message: "已取消删除" });
       });
     },
     submitDeviceForm() {
-      this.$refs.deviceForm.validate((valid) => {
+      this.$refs.deviceForm.validate(async (valid) => {
         if (valid) {
-          // 模拟API
-          const room = this.roomOptions.find(r => r.id === this.deviceForm.roomId);
-          const template = this.templateOptions.find(t => t.id === this.deviceForm.templateId);
-          const deviceData = {
-            ...this.deviceForm,
-            roomName: room ? `${room.roomNumber} (${room.department})` : 'N/A',
-            templateName: template ? `${template.manufacturer} - ${template.model}` : 'N/A',
-          };
-
-          if (this.deviceForm.id) { // 编辑
-            const index = this.mockDeviceData.findIndex(item => item.id === this.deviceForm.id);
-            if (index !== -1) {
-              this.mockDeviceData.splice(index, 1, deviceData);
+          this.formLoading = true;
+          try {
+            const payload = { ...this.deviceForm };
+            // 确保 roomId 和 templateId 是存在的，如果它们是对象，则取其 id
+            // (在 handleEdit 时已处理，此处为保险)
+            if (payload.roomId && typeof payload.roomId === 'object') {
+                payload.roomId = payload.roomId.id;
             }
-            this.$message({ type: "success", message: "更新成功!" });
-          } else { // 新增
-            deviceData.id = Date.now(); // 简单ID
-            this.mockDeviceData.unshift(deviceData);
-            this.$message({ type: "success", message: "新增成功!" });
+            if (payload.templateId && typeof payload.templateId === 'object') {
+                payload.templateId = payload.templateId.id;
+            }
+
+            if (this.deviceForm.id) { // 编辑
+              await updateDevice(this.deviceForm.id, payload);
+              this.$message({ type: "success", message: "更新成功!" });
+            } else { // 新增
+              await createDevice(payload);
+              this.$message({ type: "success", message: "新增成功!" });
+            }
+            this.dialogVisible = false;
+            this.fetchDeviceList(); // 成功后刷新列表
+          } catch (error) {
+            console.error("Error submitting device form:", error);
+            // API的错误信息通常在 error.response.data.message 或 error.message
+            const errMsg = error.response?.data?.message || error.message || "操作失败，请稍后重试";
+            this.$message.error(errMsg);
+          } finally {
+            this.formLoading = false;
           }
-          this.dialogVisible = false;
-          this.fetchDeviceList();
-          // 实际API: this.deviceForm.id ? updateDevice(...) : createDevice(...)
         } else {
+          this.$message.error("表单校验失败，请检查输入！");
           return false;
         }
       });
     },
     resetForm(formName) {
       if (this.$refs[formName]) {
-        this.$refs[formName].resetFields();
+        this.$refs[formName].resetFields(); // 重置表单项的校验状态和值
       }
-      this.deviceForm = { id: null, name: "", roomId: null, templateId: null, installationDate: "", status: "online", remarks: "" };
+      // 确保表单数据对象也被重置为初始状态，特别是对于非表单项绑定的属性
+      this.deviceForm = {
+        id: null,
+        name: "",
+        roomId: null,
+        templateId: null,
+        installationDate: parseTime(new Date(), '{y}-{m}-{d}'),
+        status: "online",
+        remarks: "",
+      };
     },
     handleSizeChange(val) {
       this.pagination.pageSize = val;
+      this.pagination.currentPage = 1; // 页码大小改变时，回到第一页
       this.fetchDeviceList();
     },
     handleCurrentChange(val) {
@@ -314,13 +440,13 @@ export default {
       if (status === 'online') return 'success';
       if (status === 'offline') return 'info';
       if (status === 'faulty') return 'danger';
-      return '';
+      return 'primary'; // 默认或未知状态
     },
     formatStatus(status) {
       if (status === 'online') return '在线';
       if (status === 'offline') return '离线';
       if (status === 'faulty') return '故障';
-      return '未知';
+      return status || '未知'; // 直接返回状态值如果未匹配
     }
   },
 };
@@ -331,17 +457,15 @@ export default {
   padding: 20px;
 }
 .box-card {
-  margin-bottom: 20px;
+  min-height: calc(100vh - 90px); /* 调整以适应你的布局 */
 }
-.mb-20 {
-  margin-bottom: 20px;
+.dialog-footer {
+  text-align: right;
 }
-.clearfix:before,
-.clearfix:after {
-  display: table;
-  content: "";
+.el-form-item {
+    margin-bottom: 22px;
 }
-.clearfix:after {
-  clear: both;
+.el-select, .el-date-picker {
+    width: 100%;
 }
 </style>
