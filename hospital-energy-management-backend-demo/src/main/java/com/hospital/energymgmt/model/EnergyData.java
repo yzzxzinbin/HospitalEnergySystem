@@ -5,6 +5,8 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Column;
+import javax.persistence.ManyToOne;
+import javax.persistence.JoinColumn;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,9 +25,18 @@ public class EnergyData {
     @Column(nullable = false)
     private LocalDateTime timestamp; // time of data collection
 
-    private String meterId; 
-    private Double consumption; 
-    private String unit; 
+    @Column(name = "meter_id") // Matches DDL
+    private String meterId;
+
+    @Column // Default column name "consumption" matches DDL
+    private Double consumption;
+
+    @Column // Default column name "unit" matches DDL
+    private String unit;
+
+    @ManyToOne
+    @JoinColumn(name = "device_id") // Matches DDL foreign key
+    private Device device;
 
     // Getters and Setters
 
@@ -83,5 +94,13 @@ public class EnergyData {
 
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public Device getDevice() {
+        return device;
+    }
+
+    public void setDevice(Device device) {
+        this.device = device;
     }
 }

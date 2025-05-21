@@ -1,2 +1,4 @@
 /.idea
 /.vscode
+/hospital-energy-management-backend-demo/target
+*.class
