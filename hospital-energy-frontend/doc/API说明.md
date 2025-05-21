@@ -1,0 +1,285 @@
+# Hospital Energy Management System API Documentation
+
+## 1. Authentication API (`/api/auth`)
+
+### 1.1. 用户登录
+*   **POST** `/api/auth/login`
+    *   **说明:** 用户使用用户名和密码进行登录。
+    *   **请求体:** `LoginRequest` (包含 `username` 和 `password`)
+    *   **成功响应 (200 OK):** 返回 `User` 对象。
+    *   **失败响应 (401 Unauthorized):** "Invalid username or password"
+
+### 1.2. 用户注册
+*   **POST** `/api/auth/register`
+    *   **说明:** 注册新用户。
+    *   **请求体:** `RegistrationRequest` (包含 `username`, `password`, `email`)
+    *   **成功响应 (201 CREATED):** 返回创建的 `User` 对象。
+    *   **失败响应 (400 Bad Request):** "Registration failed: \[错误信息]"
+
+## 2. User Management API (`/api/users`)
+
+### 2.1. 创建用户
+*   **POST** `/api/users`
+    *   **说明:** 创建一个新用户 (通常由管理员执行)。
+    *   **请求体:** `UserDto`
+    *   **成功响应 (200 OK):** 返回创建的 `UserDto` 对象。
+
+### 2.2. 根据ID获取用户
+*   **GET** `/api/users/{id}`
+    *   **说明:** 根据用户ID获取用户信息。
+    *   **路径参数:** `id` (用户ID)
+    *   **成功响应 (200 OK):** 返回 `UserDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果用户不存在。
+
+### 2.3. 获取所有用户
+*   **GET** `/api/users`
+    *   **说明:** 获取所有用户列表。
+    *   **成功响应 (200 OK):** 返回 `UserDto` 对象列表。
+
+### 2.4. 更新用户
+*   **PUT** `/api/users/{id}`
+    *   **说明:** 更新指定ID的用户信息。
+    *   **路径参数:** `id` (用户ID)
+    *   **请求体:** `UserDto`
+    *   **成功响应 (200 OK):** 返回更新后的 `UserDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果用户不存在。
+
+### 2.5. 删除用户
+*   **DELETE** `/api/users/{id}`
+    *   **说明:** 删除指定ID的用户。
+    *   **路径参数:** `id` (用户ID)
+    *   **成功响应 (204 No Content):** 无返回内容。
+    *   **失败响应 (404 Not Found):** 如果用户不存在。
+
+## 3. Room Management API (`/api/rooms`)
+
+### 3.1. 创建房间
+*   **POST** `/api/rooms`
+    *   **说明:** 创建一个新的房间信息。
+    *   **请求体:** `RoomDto`
+    *   **成功响应 (201 CREATED):** 返回创建的 `RoomDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效 (例如房间号已存在)。
+
+### 3.2. 获取所有房间
+*   **GET** `/api/rooms`
+    *   **说明:** 获取所有房间信息列表。
+    *   **成功响应 (200 OK):** 返回 `RoomDto` 对象列表。
+
+### 3.3. 根据ID获取房间
+*   **GET** `/api/rooms/{id}`
+    *   **说明:** 根据ID获取指定的房间信息。
+    *   **路径参数:** `id` (房间ID)
+    *   **成功响应 (200 OK):** 返回 `RoomDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果房间不存在。
+
+### 3.4. 根据房间号获取房间
+*   **GET** `/api/rooms/by-room-number/{roomNumber}`
+    *   **说明:** 根据房间号获取指定的房间信息。
+    *   **路径参数:** `roomNumber` (房间号)
+    *   **成功响应 (200 OK):** 返回 `RoomDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果房间不存在。
+
+### 3.5. 根据楼层获取房间列表
+*   **GET** `/api/rooms/by-floor/{floor}`
+    *   **说明:** 获取指定楼层的所有房间信息。
+    *   **路径参数:** `floor` (楼层号)
+    *   **成功响应 (200 OK):** 返回 `RoomDto` 对象列表。
+
+### 3.6. 根据部门获取房间列表
+*   **GET** `/api/rooms/by-department/{department}`
+    *   **说明:** 获取指定部门的所有房间信息。
+    *   **路径参数:** `department` (部门名称)
+    *   **成功响应 (200 OK):** 返回 `RoomDto` 对象列表。
+
+### 3.7. 更新房间信息
+*   **PUT** `/api/rooms/{id}`
+    *   **说明:** 更新指定ID的房间信息。
+    *   **路径参数:** `id` (房间ID)
+    *   **请求体:** `RoomDto`
+    *   **成功响应 (200 OK):** 返回更新后的 `RoomDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效或房间不存在。
+
+### 3.8. 删除房间
+*   **DELETE** `/api/rooms/{id}`
+    *   **说明:** 删除指定ID的房间。
+    *   **路径参数:** `id` (房间ID)
+    *   **成功响应 (204 No Content):** 无返回内容。
+    *   **失败响应 (404 Not Found):** 如果房间不存在。
+
+## 4. Device Template Management API (`/api/device-templates`)
+
+### 4.1. 创建设备模板
+*   **POST** `/api/device-templates`
+    *   **说明:** 创建一个新的设备模板。
+    *   **请求体:** `DeviceTemplateDto`
+    *   **成功响应 (201 CREATED):** 返回创建的 `DeviceTemplateDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效 (例如制造商和型号已存在)。
+
+### 4.2. 获取所有设备模板
+*   **GET** `/api/device-templates`
+    *   **说明:** 获取所有设备模板列表。
+    *   **成功响应 (200 OK):** 返回 `DeviceTemplateDto` 对象列表。
+
+### 4.3. 根据ID获取设备模板
+*   **GET** `/api/device-templates/{id}`
+    *   **说明:** 根据ID获取指定的设备模板。
+    *   **路径参数:** `id` (设备模板ID)
+    *   **成功响应 (200 OK):** 返回 `DeviceTemplateDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果设备模板不存在。
+
+### 4.4. 根据制造商获取设备模板列表
+*   **GET** `/api/device-templates/by-manufacturer/{manufacturer}`
+    *   **说明:** 获取指定制造商的所有设备模板。
+    *   **路径参数:** `manufacturer` (制造商名称)
+    *   **成功响应 (200 OK):** 返回 `DeviceTemplateDto` 对象列表。
+
+### 4.5. 根据类别获取设备模板列表
+*   **GET** `/api/device-templates/by-category/{category}`
+    *   **说明:** 获取指定类别的所有设备模板。
+    *   **路径参数:** `category` (设备类别)
+    *   **成功响应 (200 OK):** 返回 `DeviceTemplateDto` 对象列表。
+
+### 4.6. 根据制造商和型号获取设备模板
+*   **GET** `/api/device-templates/by-manufacturer-model`
+    *   **说明:** 根据制造商和型号标识获取指定的设备模板。
+    *   **请求参数:** `manufacturer` (制造商名称), `modelIdentifier` (型号标识)
+    *   **成功响应 (200 OK):** 返回 `DeviceTemplateDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果设备模板不存在。
+
+### 4.7. 更新设备模板
+*   **PUT** `/api/device-templates/{id}`
+    *   **说明:** 更新指定ID的设备模板。
+    *   **路径参数:** `id` (设备模板ID)
+    *   **请求体:** `DeviceTemplateDto`
+    *   **成功响应 (200 OK):** 返回更新后的 `DeviceTemplateDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效或设备模板不存在。
+
+### 4.8. 删除设备模板
+*   **DELETE** `/api/device-templates/{id}`
+    *   **说明:** 删除指定ID的设备模板。
+    *   **路径参数:** `id` (设备模板ID)
+    *   **成功响应 (204 No Content):** 无返回内容。
+    *   **失败响应 (404 Not Found):** 如果设备模板不存在。
+
+## 5. Device Management API (`/api/devices`)
+
+### 5.1. 创建设备
+*   **POST** `/api/devices`
+    *   **说明:** 创建一个新的设备实例。
+    *   **请求体:** `DeviceDto` (应包含 `roomId` 和/或 `deviceTemplateId`)
+    *   **成功响应 (201 CREATED):** 返回创建的 `DeviceDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效 (例如关联的房间或模板不存在)。
+
+### 5.2. 获取所有设备
+*   **GET** `/api/devices`
+    *   **说明:** 获取所有设备实例列表。
+    *   **成功响应 (200 OK):** 返回 `DeviceDto` 对象列表。
+
+### 5.3. 根据ID获取设备
+*   **GET** `/api/devices/{id}`
+    *   **说明:** 根据ID获取指定的设备实例。
+    *   **路径参数:** `id` (设备ID)
+    *   **成功响应 (200 OK):** 返回 `DeviceDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果设备不存在。
+
+### 5.4. 更新设备信息
+*   **PUT** `/api/devices/{id}`
+    *   **说明:** 更新指定ID的设备信息。
+    *   **路径参数:** `id` (设备ID)
+    *   **请求体:** `DeviceDto`
+    *   **成功响应 (200 OK):** 返回更新后的 `DeviceDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效或设备不存在。
+
+### 5.5. 删除设备
+*   **DELETE** `/api/devices/{id}`
+    *   **说明:** 删除指定ID的设备。
+    *   **路径参数:** `id` (设备ID)
+    *   **成功响应 (204 No Content):** 无返回内容。
+    *   **失败响应 (404 Not Found):** 如果设备不存在。
+
+### 5.6. 根据房间ID获取设备列表
+*   **GET** `/api/devices/by-room/{roomId}`
+    *   **说明:** 获取指定房间内的所有设备。
+    *   **路径参数:** `roomId` (房间ID)
+    *   **成功响应 (200 OK):** 返回 `DeviceDto` 对象列表。
+    *   **失败响应 (404 Not Found):** 如果房间不存在。
+
+### 5.7. 根据设备模板ID获取设备列表
+*   **GET** `/api/devices/by-template/{templateId}`
+    *   **说明:** 获取使用指定设备模板的所有设备。
+    *   **路径参数:** `templateId` (设备模板ID)
+    *   **成功响应 (200 OK):** 返回 `DeviceDto` 对象列表。
+    *   **失败响应 (404 Not Found):** 如果设备模板不存在。
+
+### 5.8. 根据状态获取设备列表
+*   **GET** `/api/devices/by-status/{status}`
+    *   **说明:** 获取具有指定状态的所有设备。
+    *   **路径参数:** `status` (设备状态，例如 "Operational", "Maintenance")
+    *   **成功响应 (200 OK):** 返回 `DeviceDto` 对象列表。
+
+## 6. Energy Data Management API (`/api/energy-data`)
+
+### 6.1. 创建能源数据记录
+*   **POST** `/api/energy-data`
+    *   **说明:** 创建一条新的能源数据记录。
+    *   **请求体:** `EnergyDataDto` (应包含 `deviceId` 如果数据与特定设备关联)
+    *   **成功响应 (201 CREATED):** 返回创建的 `EnergyDataDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效 (例如关联的设备不存在)。
+
+### 6.2. 根据ID获取能源数据记录
+*   **GET** `/api/energy-data/{id}`
+    *   **说明:** 根据ID获取指定的能源数据记录。
+    *   **路径参数:** `id` (能源数据ID)
+    *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象。
+    *   **失败响应 (404 Not Found):** 如果记录不存在。
+
+### 6.3. 获取所有能源数据记录
+*   **GET** `/api/energy-data`
+    *   **说明:** 获取所有能源数据记录列表。
+    *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
+
+### 6.4. 更新能源数据记录
+*   **PUT** `/api/energy-data/{id}`
+    *   **说明:** 更新指定ID的能源数据记录。
+    *   **路径参数:** `id` (能源数据ID)
+    *   **请求体:** `EnergyDataDto`
+    *   **成功响应 (200 OK):** 返回更新后的 `EnergyDataDto` 对象。
+    *   **失败响应 (400 Bad Request):** 如果请求数据无效或记录不存在。
+
+### 6.5. 删除能源数据记录
+*   **DELETE** `/api/energy-data/{id}`
+    *   **说明:** 删除指定ID的能源数据记录。
+    *   **路径参数:** `id` (能源数据ID)
+    *   **成功响应 (204 No Content):** 无返回内容。
+    *   **失败响应 (404 Not Found):** 如果记录不存在。
+
+### 6.6. 根据设备ID获取能源数据列表
+*   **GET** `/api/energy-data/by-device/{deviceId}`
+    *   **说明:** 获取指定设备的所有能源数据记录。
+    *   **路径参数:** `deviceId` (设备ID)
+    *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
+    *   **失败响应 (404 Not Found):** 如果设备不存在。
+
+### 6.7. 根据能源类型获取能源数据列表
+*   **GET** `/api/energy-data/by-type/{type}`
+    *   **说明:** 获取指定能源类型的所有数据记录。
+    *   **路径参数:** `type` (能源类型，例如 "electricity", "water")
+    *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
+
+### 6.8. 根据时间范围获取能源数据列表
+*   **GET** `/api/energy-data/by-timestamp`
+    *   **说明:** 获取指定时间范围内的所有能源数据记录。
+    *   **请求参数:**
+        *   `start` (开始时间, ISO DATE_TIME格式, 例如 "2023-01-01T00:00:00")
+        *   `end` (结束时间, ISO DATE_TIME格式, 例如 "2023-01-31T23:59:59")
+    *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
+
+### 6.9. 根据设备ID和时间范围获取能源数据列表
+*   **GET** `/api/energy-data/by-device-timestamp/{deviceId}`
+    *   **说明:** 获取指定设备在指定时间范围内的能源数据记录。
+    *   **路径参数:** `deviceId` (设备ID)
+    *   **请求参数:**
+        *   `start` (开始时间, ISO DATE_TIME格式)
+        *   `end` (结束时间, ISO DATE_TIME格式)
+    *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
+    *   **失败响应 (404 Not Found):** 如果设备不存在。
