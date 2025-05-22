@@ -202,21 +202,25 @@ export default {
   },
 };
 </script>
-
+<!-- 导入全局样式 -->
+import "@/assets/styles/index.css";
 <style scoped>
-/* CSS Variables (inspired by example, scoped to this component) */
+/* CSS Variables (inspired by reference example, scoped to this component) */
 .login-view {
-  --primary-color: #409EFF; /* Element UI Blue, or your preferred primary color */
-  --primary-hover: #66b1ff; /* Lighter shade for hover, or a darker one like #3a56d4 */
-  --text-color-dark: #2b2d42; /* For dark text on light backgrounds */
-  --text-color-light: rgba(255, 255, 255, 0.9); /* For light text on dark backgrounds */
-  --border-color-light: rgba(255, 255, 255, 0.3); /* Light border for dark UI elements */
-  --border-color-dark: rgba(0, 0, 0, 0.1); /* Dark border for light UI elements */
-  --background-card: rgba(255, 255, 255, 0.85); /* Semi-transparent white for the card */
-  --shadow-strong: 0 12px 40px rgba(0, 0, 0, 0.25);
-  --shadow-soft: 0 4px 15px rgba(0, 0, 0, 0.1);
-  --transition-fast: all 0.2s ease-in-out;
+  --primary-color: #409EFF; /* Element UI Blue */
+  --primary-hover: #3a56d4; /* Darker shade for hover from reference */
+  --text-color-dark: #2b2d42;
+  --text-color-light: rgba(255, 255, 255, 0.9);
+  --border-color-light: rgba(255, 255, 255, 0.3); /* Reference --border-color */
+  --border-color-input: rgba(255, 255, 255, 0.3); /* Specific for input borders from reference */
+  --background-card-ref: rgba(255, 255, 255, 0.4); /* Reference card background */
+  --input-background-ref: rgba(255, 255, 255, 0.1); /* Reference input background */
+  --input-focus-background-ref: rgba(255, 255, 255, 0.15);
+  --input-text-color-ref: rgba(0, 0, 0, 0.4); /* Reference input text color */
+  --input-focus-text-color-ref: #000000;
+  --shadow-ref: 0 8px 32px rgba(0, 0, 0, 0.3); /* Reference shadow */
   --transition-normal: all 0.3s ease;
+  --white-color: #ffffff;
 }
 
 /* Base reset and full-page container */
@@ -227,7 +231,7 @@ export default {
 }
 
 .login-view {
-  position: fixed; /* Changed from flex to fixed for full viewport coverage */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -235,9 +239,9 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh; /* Ensure it covers full height */
+  min-height: 100vh;
   padding: 20px; /* Padding for smaller screens */
-  background-image: url("~@/assets/images/a.png"); /* Adjusted path */
+  background-image: url("~@/assets/images/a.png"); /* Path from current project */
   background-size: cover;
   background-position: center;
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
@@ -249,181 +253,137 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.3); /* Darker overlay for better contrast */
+  background: rgba(201, 205, 221, 0.3); /* Lighter overlay from reference */
   z-index: 0;
 }
 
-/* Login Card Styling */
+/* Login Card Styling - Mosaic Glass Effect from reference */
 .login-card {
-  background-color: var(--background-card);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background-color: var(--background-card-ref);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border-radius: 16px;
   width: 100%;
-  max-width: 420px; /* Max width of the login card */
+  max-width: 420px;
   overflow: hidden;
   transition: var(--transition-normal);
   z-index: 1;
-  box-shadow: var(--shadow-strong);
-  border: 1px solid var(--border-color-light);
+  box-shadow: var(--shadow-ref);
+  /* border: 1px solid var(--border-color-light); /* Optional: reference had commented out border */
 }
 
-/* Login Header */
+/* Login Header from reference */
 .login-header {
-  padding: 30px 32px 25px;
+  padding: 36px 32px 28px;
   text-align: center;
-  border-bottom: 1px solid rgba(0,0,0,0.05); /* Softer border */
-  /* background-color: rgba(255, 255, 255, 0.1); */
+  border-bottom: 1px solid var(--border-color-light); /* Using light border color */
+  background-color: rgba(211, 57, 57, 0.3); /* Reddish background from reference */
 }
 
 .login-header h1 {
-  font-size: 26px; /* Slightly reduced font size */
+  font-size: 28px; /* Reference font size */
   font-weight: 600;
-  color: var(--text-color-dark);
-  margin-bottom: 5px;
+  color: var(--text-color-dark); /* Keep current dark text for title */
+  margin-bottom: 8px;
+  letter-spacing: 1px; /* Reference letter spacing */
 }
 
-.login-header .subtitle {
+.login-header .subtitle { /* Style for subtitle if re-enabled */
   font-size: 14px;
-  color: #606266; /* Element UI secondary text color */
+  color: var(--text-color-dark); /* Adjusted for better visibility on reddish bg */
   opacity: 0.9;
 }
 
-/* Login Form */
+/* Login Form from reference */
 .login-form-main {
-  padding: 30px 32px;
+  padding: 32px;
 }
 
 .form-group {
-  margin-bottom: 22px; /* Spacing between form items */
+  margin-bottom: 24px; /* Reference spacing */
 }
 
-.form-group label { /* If you choose to use labels */
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-color-dark);
-}
-
-.input-wrapper {
-  position: relative;
-}
-
-/* Styling Element UI Inputs */
+/* Input field styling from reference */
 .input-field ::v-deep .el-input__inner {
-  background-color: rgba(255, 255, 255, 0.7); /* Slightly more opaque */
-  border: 1px solid var(--border-color-dark);
-  border-radius: 8px;
-  padding: 12px 15px 12px 40px; /* Adjusted padding for prefix icon */
-  font-size: 15px;
-  color: var(--text-color-dark);
-  transition: var(--transition-fast);
-  height: 48px; /* Consistent height */
+  background-color: var(--input-background-ref) !important;
+  border: 1px solid var(--border-color-input) !important;
+  border-radius: 8px !important;
+  padding: 12px 15px 12px 40px !important; /* Adjusted padding for prefix icon */
+  font-size: 15px !important;
+  color: var(--input-text-color-ref) !important;
+  transition: var(--transition-normal) !important;
+  height: 40px; /* Let padding define height */
 }
 
 .input-field ::v-deep .el-input__inner:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2); /* Softer focus shadow */
-  background-color: #fff;
+  outline: none !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 4px rgba(74, 107, 255, 0.2) !important; /* Reference focus shadow */
+  background-color: var(--input-focus-background-ref) !important;
+  color: var(--input-focus-text-color-ref) !important;
 }
 
 .input-field ::v-deep .el-input__prefix {
-  left: 12px; /* Prefix icon position */
+  left: 12px !important; /* Reference icon position */
   display: flex;
   align-items: center;
   height: 100%;
-  color: #889aa4; /* Icon color */
+  color: var(--text-color-dark); /* Adjusted for visibility */
 }
 .input-field ::v-deep .el-input__prefix i {
   font-size: 16px;
 }
 
-.input-field.is-focus ::v-deep .el-input__prefix { /* This class might not be on el-input directly */
-  color: var(--primary-color);
-}
-/* For focused state, Element UI usually changes icon color via its own classes */
 .input-field ::v-deep .el-input.is-focus .el-input__prefix {
-    color: var(--primary-color);
+  color: var(--primary-color) !important;
 }
 
-
-/* Form Options (Remember me, Forgot Password) */
-.form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  font-size: 13px;
-}
-
-.remember-me ::v-deep .el-checkbox__label {
-  color: #606266;
-  font-size: 13px;
-}
-.remember-me ::v-deep .el-checkbox__inner {
-  border-color: var(--border-color-dark);
-}
-
-.forgot-password {
-  color: var(--primary-color);
-  text-decoration: none;
-  transition: var(--transition-fast);
-}
-
-.forgot-password:hover {
-  text-decoration: underline;
-  color: var(--primary-hover);
-}
-
-/* Login Button */
+/* Login Button from reference */
 .login-button {
   width: 100%;
-  padding: 14px 0; /* Adjusted padding */
+  padding: 14px;
   font-size: 16px;
   font-weight: 500;
-  color: #fff;
-  background-color: var(--primary-color);
+  color: var(--white-color);
+  background-color: rgba(74, 107, 255, 0.8); /* Reference button color */
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   transition: var(--transition-normal);
   display: flex;
   justify-content: center;
   align-items: center;
   letter-spacing: 1px;
-  height: 48px; /* Consistent height */
+  /* margin-bottom: 24px; /* Optional: if other elements follow */
 }
 
 .login-button:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--primary-hover); /* Using updated --primary-hover */
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(64, 158, 255, 0.3);
+  box-shadow: 0 6px 16px rgba(74, 107, 255, 0.4); /* Reference hover shadow */
 }
 
 .login-button.is-loading {
-  background-color: var(--primary-hover); /* Keep color during loading */
+  background-color: var(--primary-hover);
 }
 
-/* Register Link */
+/* Register Link Container */
 .register-link-container {
-  text-align: center; /* Center the link */
+  text-align: center;
   margin-top: 25px;
 }
 
 .register-link {
   font-size: 14px;
   color: var(--primary-color);
-  transition: var(--transition-fast);
+  transition: var(--transition-normal);
 }
 .register-link:hover {
   color: var(--primary-hover);
   text-decoration: underline;
 }
 
-
-/* Responsive adjustments */
+/* Responsive adjustments from reference (basic) */
 @media (max-width: 480px) {
   .login-card {
     border-radius: 0; /* Full width on small screens */
@@ -433,34 +393,11 @@ export default {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border: none;
-    box-shadow: none;
-    background-color: rgba(255, 255, 255, 0.95); /* More opaque on small screens */
-    -webkit-backdrop-filter: blur(5px);
-    backdrop-filter: blur(5px);
   }
 
   .login-header,
   .login-form-main {
     padding: 20px 25px; /* Reduced padding */
   }
-   .login-header h1 {
-    font-size: 22px;
-  }
-}
-
-/* Password visibility toggle - if re-enabled */
-.show-pwd {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-  color: #889aa4;
-  cursor: pointer;
-  user-select: none;
-}
-.show-pwd:hover {
-  color: var(--primary-color);
 }
 </style>

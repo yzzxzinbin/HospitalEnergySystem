@@ -262,19 +262,22 @@ export default {
 </script>
 
 <style scoped>
-/* CSS Variables (copied from LoginView.vue for consistency) */
+/* CSS Variables (inspired by LoginView.vue for consistency) */
 .register-view {
-  --primary-color: #409EFF;
-  --primary-hover: #66b1ff;
+  --primary-color: #409EFF; /* Element UI Blue */
+  --primary-hover: #3a56d4; /* Darker shade for hover from LoginView */
   --text-color-dark: #2b2d42;
   --text-color-light: rgba(255, 255, 255, 0.9);
-  --border-color-light: rgba(255, 255, 255, 0.3);
-  --border-color-dark: rgba(0, 0, 0, 0.1);
-  --background-card: rgba(255, 255, 255, 0.85);
-  --shadow-strong: 0 12px 40px rgba(0, 0, 0, 0.25);
-  --shadow-soft: 0 4px 15px rgba(0, 0, 0, 0.1);
-  --transition-fast: all 0.2s ease-in-out;
+  --border-color-light: rgba(255, 255, 255, 0.3); /* Reference --border-color */
+  --border-color-input: rgba(255, 255, 255, 0.3); /* Specific for input borders from LoginView */
+  --background-card-ref: rgba(255, 255, 255, 0.4); /* Reference card background from LoginView */
+  --input-background-ref: rgba(255, 255, 255, 0.1); /* Reference input background from LoginView */
+  --input-focus-background-ref: rgba(255, 255, 255, 0.15); /* From LoginView */
+  --input-text-color-ref: rgba(0, 0, 0, 0.4); /* Reference input text color from LoginView */
+  --input-focus-text-color-ref: #000000; /* From LoginView */
+  --shadow-ref: 0 8px 32px rgba(0, 0, 0, 0.3); /* Reference shadow from LoginView */
   --transition-normal: all 0.3s ease;
+  --white-color: #ffffff; /* From LoginView */
 }
 
 /* Base reset and full-page container */
@@ -307,81 +310,83 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(201, 205, 221, 0.3); /* Lighter overlay from LoginView */
   z-index: 0;
 }
 
-/* Register Card Styling */
+/* Register Card Styling - Mosaic Glass Effect from LoginView */
 .register-card {
-  background-color: var(--background-card);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background-color: var(--background-card-ref);
+  -webkit-backdrop-filter: blur(10px); /* Consistent with LoginView */
+  backdrop-filter: blur(10px); /* Consistent with LoginView */
   border-radius: 16px;
   width: 100%;
-  max-width: 450px; /* Slightly wider for more fields */
+  max-width: 450px; /* Slightly wider for more fields - kept from original RegisterView */
   overflow: hidden;
   transition: var(--transition-normal);
   z-index: 1;
-  box-shadow: var(--shadow-strong);
-  border: 1px solid var(--border-color-light);
+  box-shadow: var(--shadow-ref);
+  /* border: 1px solid var(--border-color-light); /* Optional: consistent with LoginView (commented out) */
 }
 
-/* Register Header */
+/* Register Header from LoginView */
 .register-header {
-  padding: 30px 32px 25px;
+  padding: 36px 32px 28px; /* Consistent with LoginView */
   text-align: center;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid var(--border-color-light); /* Consistent with LoginView */
+  background-color: rgba(211, 57, 57, 0.3); /* Reddish background from LoginView */
 }
 
 .register-header h1 {
-  font-size: 26px;
+  font-size: 28px; /* Consistent with LoginView */
   font-weight: 600;
   color: var(--text-color-dark);
-  margin-bottom: 5px;
+  margin-bottom: 8px; /* Consistent with LoginView */
+  letter-spacing: 1px; /* Consistent with LoginView */
 }
 
 /* Register Form */
 .register-form-main {
-  padding: 30px 32px;
+  padding: 32px; /* Consistent with LoginView */
 }
 
 .form-group {
-  margin-bottom: 20px; /* Adjusted spacing */
+  margin-bottom: 24px; /* Consistent with LoginView spacing */
 }
 
 /* Styling Element UI Inputs (copied and adapted from LoginView.vue) */
 .input-field ::v-deep .el-input__inner {
-  background-color: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--border-color-dark);
-  border-radius: 8px;
-  padding: 12px 15px 12px 40px; /* For prefix icon */
-  font-size: 15px;
-  color: var(--text-color-dark);
-  transition: var(--transition-fast);
-  height: 48px;
+  background-color: var(--input-background-ref) !important;
+  border: 1px solid var(--border-color-input) !important;
+  border-radius: 8px !important;
+  padding: 12px 15px 12px 40px !important; /* Adjusted padding for prefix icon */
+  font-size: 15px !important;
+  color: var(--input-text-color-ref) !important;
+  transition: var(--transition-normal) !important;
+  height: 40px !important; /* Consistent with LoginView */
 }
 
 .input-field ::v-deep .el-input__inner:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2);
-  background-color: #fff;
+  outline: none !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 4px rgba(74, 107, 255, 0.2) !important; /* Reference focus shadow from LoginView */
+  background-color: var(--input-focus-background-ref) !important;
+  color: var(--input-focus-text-color-ref) !important;
 }
 
 .input-field ::v-deep .el-input__prefix {
-  left: 12px;
+  left: 12px !important; /* Reference icon position from LoginView */
   display: flex;
   align-items: center;
   height: 100%;
-  color: #889aa4;
+  color: var(--text-color-dark); /* Adjusted for visibility, similar to LoginView */
 }
 .input-field ::v-deep .el-input__prefix i {
   font-size: 16px;
 }
 
-.input-field.is-focus ::v-deep .el-input__prefix, /* Element UI might not add .is-focus to wrapper */
 .input-field ::v-deep .el-input.is-focus .el-input__prefix {
-    color: var(--primary-color);
+  color: var(--primary-color) !important; /* Consistent with LoginView */
 }
 
 /* Password visibility toggle */
@@ -402,29 +407,29 @@ export default {
   font-size: 18px; /* Slightly larger icon for visibility toggle */
 }
 
-/* Register Button */
+/* Register Button from LoginView */
 .register-button {
   width: 100%;
-  padding: 14px 0;
+  padding: 14px; /* Consistent with LoginView */
   font-size: 16px;
   font-weight: 500;
-  color: #fff;
-  background-color: var(--primary-color);
+  color: var(--white-color);
+  background-color: rgba(74, 107, 255, 0.8); /* Reference button color from LoginView */
   border: none;
-  border-radius: 8px;
+  border-radius: 12px; /* Consistent with LoginView */
   cursor: pointer;
   transition: var(--transition-normal);
   display: flex;
   justify-content: center;
   align-items: center;
   letter-spacing: 1px;
-  height: 48px;
+  /* height: 48px; /* Removed, padding will define height, consistent with LoginView */
 }
 
 .register-button:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--primary-hover); /* Using updated --primary-hover */
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(64, 158, 255, 0.3);
+  box-shadow: 0 6px 16px rgba(74, 107, 255, 0.4); /* Reference hover shadow from LoginView */
 }
 
 .register-button.is-loading {
@@ -434,16 +439,16 @@ export default {
 /* Login Link */
 .login-link-container {
   text-align: center;
-  margin-top: 25px;
+  margin-top: 25px; /* Consistent with LoginView */
 }
 
 .login-link {
   font-size: 14px;
-  color: var(--primary-color);
-  transition: var(--transition-fast);
+  color: var(--primary-color); /* Consistent with LoginView */
+  transition: var(--transition-normal); /* Consistent with LoginView */
 }
 .login-link:hover {
-  color: var(--primary-hover);
+  color: var(--primary-hover); /* Consistent with LoginView */
   text-decoration: underline;
 }
 
