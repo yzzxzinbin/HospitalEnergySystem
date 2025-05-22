@@ -1,15 +1,22 @@
 package com.hospital.energymgmt.service;
 
 import com.hospital.energymgmt.dto.EnergyDataDto;
+import com.hospital.energymgmt.dto.PageResponseDto;
 import com.hospital.energymgmt.model.Device;
 import com.hospital.energymgmt.model.EnergyData;
 import com.hospital.energymgmt.repository.DeviceRepository;
 import com.hospital.energymgmt.repository.EnergyDataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import javax.persistence.criteria.Predicate; // Changed from jakarta.persistence.criteria.Predicate
 import java.time.LocalDateTime;
+import java.util.ArrayList; // Added import
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -133,6 +140,39 @@ public class EnergyDataService {
         return energyDataRepository.findByType(type).stream()
             .map(this::convertToDto)
             .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<EnergyDataDto> getAllEnergyData(Pageable pageable, String type, LocalDateTime startDate, LocalDateTime endDate, Long deviceId) {
+        Specification<EnergyData> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (StringUtils.hasText(type)) {
+                predicates.add(criteriaBuilder.equal(root.get("type"), type));
+            }
+            if (startDate != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("timestamp"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("timestamp"), endDate));
+            }
+            if (deviceId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("device").get("id"), deviceId));
+            }
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<EnergyData> energyDataPage = energyDataRepository.findAll(spec, pageable);
+        List<EnergyDataDto> energyDataDtos = energyDataPage.getContent().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+
+        return new PageResponseDto<>(
+                energyDataDtos,
+                energyDataPage.getTotalElements(),
+                energyDataPage.getNumber(),
+                energyDataPage.getSize(),
+                energyDataPage.getTotalPages()
+        );
     }
 
     // Add more specific query methods as needed, using the repository methods

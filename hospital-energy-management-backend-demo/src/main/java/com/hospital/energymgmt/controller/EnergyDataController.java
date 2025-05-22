@@ -1,8 +1,11 @@
 package com.hospital.energymgmt.controller;
 
 import com.hospital.energymgmt.dto.EnergyDataDto;
+import com.hospital.energymgmt.dto.PageResponseDto;
 import com.hospital.energymgmt.service.EnergyDataService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,9 +43,14 @@ public class EnergyDataController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EnergyDataDto>> getAllEnergyData() {
-        List<EnergyDataDto> energyDataList = energyDataService.getAllEnergyData();
-        return ResponseEntity.ok(energyDataList);
+    public ResponseEntity<PageResponseDto<EnergyDataDto>> getAllEnergyData(
+            @PageableDefault(size = 10, sort = "timestamp") Pageable pageable,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) Long deviceId) {
+        PageResponseDto<EnergyDataDto> pageResponse = energyDataService.getAllEnergyData(pageable, type, startDate, endDate, deviceId);
+        return ResponseEntity.ok(pageResponse);
     }
 
     @PutMapping("/{id}")

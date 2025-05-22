@@ -254,11 +254,15 @@
 
 ### 6.3. 获取所有能源数据记录
 *   **GET** `/api/energy-data`
-    *   **说明:** 获取所有能源数据记录列表。支持分页和排序。
+    *   **说明:** 获取所有能源数据记录列表。支持分页、排序和过滤。
     *   **请求参数 (Query Parameters):**
         *   `page` (可选, 默认为 0): 页码 (0-indexed)。
         *   `size` (可选, 默认为 10): 每页记录数。
-        *   `sort` (可选, 默认为 "id,asc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `timestamp,desc`。
+        *   `sort` (可选, 默认为 "timestamp,desc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `timestamp,desc` 或 `value,asc`。
+        *   `type` (可选): 能源类型 (例如 "electricity", "water")，用于筛选。
+        *   `deviceId` (可选): 设备ID，用于筛选特定设备的数据。
+        *   `startDate` (可选, ISO DATE_TIME格式, 例如 "2023-01-01T00:00:00"): 开始时间，用于筛选指定时间范围的数据。
+        *   `endDate` (可选, ISO DATE_TIME格式, 例如 "2023-01-31T23:59:59"): 结束时间，用于筛选指定时间范围的数据。
     *   **成功响应 (200 OK):** 返回 `PageResponseDto<EnergyDataDto>` 对象，包含 `records` (能源数据列表), `total` (总记录数), `currentPage`, `pageSize`, `totalPages`。
 
 ### 6.4. 更新能源数据记录
