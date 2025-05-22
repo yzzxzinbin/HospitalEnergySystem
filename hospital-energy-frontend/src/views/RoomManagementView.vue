@@ -9,13 +9,13 @@
       <!-- 搜索和筛选区域 -->
       <el-form :inline="true" :model="searchParams" class="demo-form-inline mb-20">
         <el-form-item label="房间号">
-          <el-input v-model="searchParams.roomNumber" placeholder="请输入房间号"></el-input>
+          <el-input v-model="searchParams.roomNumber" placeholder="请输入房间号" clearable></el-input>
         </el-form-item>
         <el-form-item label="楼层">
-          <el-input v-model="searchParams.floor" placeholder="请输入楼层"></el-input>
+          <el-input v-model="searchParams.floor" placeholder="请输入楼层" clearable></el-input>
         </el-form-item>
         <el-form-item label="部门">
-          <el-input v-model="searchParams.department" placeholder="请输入部门"></el-input>
+          <el-input v-model="searchParams.department" placeholder="请输入部门" clearable></el-input>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="el-icon-search" @click="handleSearch">查询</el-button>
@@ -34,11 +34,21 @@
         <el-table-column prop="roomNumber" label="房间号" align="center"></el-table-column>
         <el-table-column prop="floor" label="楼层" align="center"></el-table-column>
         <el-table-column prop="department" label="部门" align="center"></el-table-column>
-        <el-table-column prop="description" label="描述" align="center"></el-table-column>
+        <el-table-column prop="description" label="描述" align="center" show-overflow-tooltip></el-table-column>
         <el-table-column label="操作" width="200" align="center">
           <template slot-scope="scope">
-            <el-button size="mini" type="warning" icon="el-icon-edit" @click="handleEditRoom(scope.row)">编辑</el-button>
-            <el-button size="mini" type="danger" icon="el-icon-delete" @click="handleDeleteRoom(scope.row)">删除</el-button>
+            <el-button
+              size="mini"
+              type="primary"
+              icon="el-icon-edit"
+              @click="handleEditRoom(scope.row)"
+            >编辑</el-button>
+            <el-button
+              size="mini"
+              type="danger"
+              icon="el-icon-delete"
+              @click="handleDeleteRoom(scope.row)"
+            >删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -60,10 +70,14 @@
     <el-dialog
       :title="dialogTitle"
       :visible.sync="dialogVisible"
-      width="30%"
+      width="40%" 
       @close="resetForm('roomForm')"
+      :close-on-click-modal="false"
     >
       <el-form :model="roomForm" :rules="roomRules" ref="roomForm" label-width="80px">
+        <el-form-item label="房间名称" prop="name">
+          <el-input v-model="roomForm.name" placeholder="请输入房间名称"></el-input>
+        </el-form-item>
         <el-form-item label="房间号" prop="roomNumber">
           <el-input v-model="roomForm.roomNumber" placeholder="请输入房间号"></el-input>
         </el-form-item>
@@ -74,12 +88,12 @@
           <el-input v-model="roomForm.department" placeholder="请输入部门"></el-input>
         </el-form-item>
         <el-form-item label="描述" prop="description">
-          <el-input type="textarea" v-model="roomForm.description" placeholder="请输入房间描述"></el-input>
+          <el-input type="textarea" :rows="3" v-model="roomForm.description" placeholder="请输入房间描述"></el-input>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="submitRoomForm">确 定</el-button>
+        <el-button type="primary" @click="submitRoomForm" :loading="submitLoading">确 定</el-button>
       </span>
     </el-dialog>
 
@@ -87,19 +101,20 @@
 </template>
 
 <script>
-// 实际项目中会从 src/api/room.js 导入 API
-// import { getRooms, createRoom, updateRoom, deleteRoom } from '@/api/room';
+import { getRooms, createRoom, updateRoom, deleteRoom } from '@/api/room';
 
 export default {
   name: "RoomManagementView",
   data() {
     return {
       loading: false,
-      roomList: [], // 房间列表数据
+      submitLoading: false,
+      roomList: [], 
       searchParams: {
         roomNumber: "",
         floor: "",
         department: "",
+        // Add other searchable fields if needed, e.g. from API spec
       },
       pagination: {
         currentPage: 1,
@@ -110,28 +125,33 @@ export default {
       dialogTitle: "",
       roomForm: {
         id: null,
+        name: "", // Added name field
         roomNumber: "",
         floor: "",
         department: "",
         description: "",
       },
       roomRules: {
+        name: [
+          { required: true, message: "请输入房间名称", trigger: "blur" },
+          { min: 1, max: 100, message: '长度在 1 到 100 个字符', trigger: 'blur' }
+        ],
         roomNumber: [
           { required: true, message: "请输入房间号", trigger: "blur" },
+          { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
         ],
-        floor: [{ required: true, message: "请输入楼层", trigger: "blur" }],
+        floor: [
+          { required: true, message: "请输入楼层", trigger: "blur" },
+          { min: 1, max: 20, message: '长度在 1 到 20 个字符', trigger: 'blur' }
+        ],
         department: [
           { required: true, message: "请输入部门", trigger: "blur" },
+          { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
         ],
+        description: [
+          { max: 200, message: '描述最多 200 个字符', trigger: 'blur' }
+        ]
       },
-      // 模拟数据
-      mockRoomData: [
-        { id: 1, roomNumber: '101', floor: '1F', department: '门诊部', description: '普通诊室' },
-        { id: 2, roomNumber: '102', floor: '1F', department: '门诊部', description: '专家诊室' },
-        { id: 3, roomNumber: '201', floor: '2F', department: '住院部', description: '标准病房' },
-        { id: 4, roomNumber: '202', floor: '2F', department: '住院部', description: '高级病房' },
-        { id: 5, roomNumber: '301', floor: '3F', department: '手术室', description: '1号手术室' },
-      ]
     };
   },
   created() {
@@ -140,36 +160,34 @@ export default {
   methods: {
     fetchRoomList() {
       this.loading = true;
-      // 模拟API调用
-      setTimeout(() => {
-        let filteredData = this.mockRoomData.filter(item => {
-          return (
-            (this.searchParams.roomNumber ? item.roomNumber.includes(this.searchParams.roomNumber) : true) &&
-            (this.searchParams.floor ? item.floor.includes(this.searchParams.floor) : true) &&
-            (this.searchParams.department ? item.department.includes(this.searchParams.department) : true)
-          );
-        });
-        this.pagination.total = filteredData.length;
-        const start = (this.pagination.currentPage - 1) * this.pagination.pageSize;
-        const end = start + this.pagination.pageSize;
-        this.roomList = filteredData.slice(start, end);
-        this.loading = false;
-      }, 500);
+      const params = {
+        page: this.pagination.currentPage - 1, // API is 0-indexed
+        size: this.pagination.pageSize,
+        // sort: 'id,asc', // Default sort, can be dynamic if needed
+        // Conditionally add search parameters if they are not empty
+        ...(this.searchParams.roomNumber && { roomNumber: this.searchParams.roomNumber }),
+        ...(this.searchParams.floor && { floor: this.searchParams.floor }),
+        ...(this.searchParams.department && { department: this.searchParams.department }),
+      };
 
-      // 实际API调用示例:
-      // getRooms({ ...this.searchParams, page: this.pagination.currentPage, size: this.pagination.pageSize })
-      //   .then(response => {
-      //     this.roomList = response.data.records; // 假设后端返回数据结构中列表在 records
-      //     this.pagination.total = response.data.total; // 假设后端返回数据结构中总数在 total
-      //     this.loading = false;
-      //   })
-      //   .catch(error => {
-      //     this.$message.error("获取房间列表失败");
-      //     this.loading = false;
-      //   });
+      getRooms(params)
+        .then(response => {
+          // Assuming API returns { records: [], total: 0, currentPage: 0, pageSize: 0, totalPages: 0 }
+          // Based on PageResponseDto in RoomController
+          this.roomList = response.records; 
+          this.pagination.total = response.total;
+          // currentPage from backend is 0-indexed, frontend is 1-indexed
+          // this.pagination.currentPage = response.currentPage + 1; 
+          // No need to set currentPage here as it's driven by user interaction or reset in handleSearch
+          this.loading = false;
+        })
+        .catch(error => {
+          this.$message.error("获取房间列表失败: " + (error.message || '请检查网络或联系管理员'));
+          this.loading = false;
+        });
     },
     handleSearch() {
-      this.pagination.currentPage = 1; // 查询时回到第一页
+      this.pagination.currentPage = 1; 
       this.fetchRoomList();
     },
     resetSearch() {
@@ -182,33 +200,37 @@ export default {
     },
     handleAddRoom() {
       this.dialogTitle = "新增房间";
-      this.roomForm = { id: null, roomNumber: "", floor: "", department: "", description: "" };
+      this.roomForm = { id: null, name: "", roomNumber: "", floor: "", department: "", description: "" }; // Added name
       this.dialogVisible = true;
+      if (this.$refs.roomForm) {
+        this.$refs.roomForm.clearValidate();
+      }
     },
     handleEditRoom(row) {
       this.dialogTitle = "编辑房间";
-      this.roomForm = { ...row }; // 浅拷贝，避免直接修改表格数据
+      this.roomForm = { ...row }; 
       this.dialogVisible = true;
+       if (this.$refs.roomForm) {
+        this.$refs.roomForm.clearValidate();
+      }
     },
     handleDeleteRoom(row) {
-      this.$confirm(`确定删除房间 ${row.roomNumber} 吗?`, "提示", {
-        confirmButtonText: "确定",
+      this.$confirm(`确定删除房间 ${row.roomNumber} 吗? 此操作不可恢复。`, "提示", {
+        confirmButtonText: "确定删除",
         cancelButtonText: "取消",
         type: "warning",
       })
         .then(() => {
-          // 模拟API调用
-          this.mockRoomData = this.mockRoomData.filter(item => item.id !== row.id);
-          this.fetchRoomList(); // 重新加载数据
-          this.$message({ type: "success", message: "删除成功!" });
-
-          // 实际API调用示例:
-          // deleteRoom(row.id).then(() => {
-          //   this.$message({ type: "success", message: "删除成功!" });
-          //   this.fetchRoomList(); // 重新获取列表
-          // }).catch(error => {
-          //   this.$message.error("删除失败");
-          // });
+          deleteRoom(row.id).then(() => {
+            this.$message({ type: "success", message: "删除成功!" });
+            // If current page becomes empty after deletion, go to previous page
+            if (this.roomList.length === 1 && this.pagination.currentPage > 1) {
+                this.pagination.currentPage--;
+            }
+            this.fetchRoomList(); 
+          }).catch(error => {
+            this.$message.error("删除失败: " + (error.message || '请重试'));
+          });
         })
         .catch(() => {
           this.$message({ type: "info", message: "已取消删除" });
@@ -217,31 +239,25 @@ export default {
     submitRoomForm() {
       this.$refs.roomForm.validate((valid) => {
         if (valid) {
-          // 模拟API调用
-          if (this.roomForm.id) { // 编辑
-            const index = this.mockRoomData.findIndex(item => item.id === this.roomForm.id);
-            if (index !== -1) {
-              this.mockRoomData.splice(index, 1, { ...this.roomForm });
-            }
-            this.$message({ type: "success", message: "更新成功!" });
-          } else { // 新增
-            this.roomForm.id = Date.now(); // 简单生成唯一ID
-            this.mockRoomData.unshift({ ...this.roomForm });
-            this.$message({ type: "success", message: "新增成功!" });
-          }
-          this.dialogVisible = false;
-          this.fetchRoomList();
-
-          // 实际API调用示例:
-          // const apiCall = this.roomForm.id ? updateRoom(this.roomForm.id, this.roomForm) : createRoom(this.roomForm);
-          // apiCall.then(() => {
-          //   this.$message({ type: "success", message: this.roomForm.id ? "更新成功!" : "新增成功!" });
-          //   this.dialogVisible = false;
-          //   this.fetchRoomList();
-          // }).catch(error => {
-          //   this.$message.error(this.roomForm.id ? "更新失败" : "新增失败");
-          // });
+          this.submitLoading = true;
+          const apiCall = this.roomForm.id 
+            ? updateRoom(this.roomForm.id, this.roomForm) 
+            : createRoom(this.roomForm);
+          
+          apiCall.then(() => {
+            this.$message({ type: "success", message: this.roomForm.id ? "更新成功!" : "新增成功!" });
+            this.dialogVisible = false;
+            this.fetchRoomList();
+          }).catch(error => {
+            const errorMsg = error.response && error.response.data && error.response.data.message 
+                           ? error.response.data.message 
+                           : (error.message || (this.roomForm.id ? '更新失败' : '新增失败'));
+            this.$message.error(errorMsg);
+          }).finally(() => {
+            this.submitLoading = false;
+          });
         } else {
+          this.$message.error('请检查表单信息是否完整且正确！');
           return false;
         }
       });
@@ -250,10 +266,11 @@ export default {
       if (this.$refs[formName]) {
         this.$refs[formName].resetFields();
       }
-      this.roomForm = { id: null, roomNumber: "", floor: "", department: "", description: "" };
+      this.roomForm = { id: null, name: "", roomNumber: "", floor: "", department: "", description: "" }; // Added name
     },
     handleSizeChange(val) {
       this.pagination.pageSize = val;
+      this.pagination.currentPage = 1; // Reset to first page when size changes
       this.fetchRoomList();
     },
     handleCurrentChange(val) {
