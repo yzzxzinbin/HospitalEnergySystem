@@ -100,8 +100,8 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="所属房间" prop="roomId">
-              <el-select v-model="deviceForm.roomId" placeholder="请选择所属房间" filterable style="width: 100%;">
-                <el-option v-for="room in roomOptions" :key="room.id" :label="room.roomNumber + (room.department ? ' (' + room.department + ')' : '')" :value="room.id"></el-option>
+              <el-select v-model="deviceForm.roomId" placeholder="请选择所属房间" filterable style="width: 100%;" :filter-method="filterDialogRoomOptions" @focus="resetRoomOptionsInDialog">
+                <el-option v-for="room in roomOptionsInDialog" :key="room.id" :label="room.roomNumber + (room.department ? ' (' + room.department + ')' : '')" :value="room.id"></el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -109,8 +109,8 @@
         <el-row>
           <el-col :span="12">
             <el-form-item label="设备模板" prop="deviceTemplateId">
-              <el-select v-model="deviceForm.deviceTemplateId" placeholder="请选择设备模板" filterable style="width: 100%;">
-                <el-option v-for="template in templateOptions" :key="template.id" :label="template.templateName || (template.manufacturer + ' - ' + template.modelIdentifier)" :value="template.id"></el-option>
+              <el-select v-model="deviceForm.deviceTemplateId" placeholder="请选择设备模板" filterable style="width: 100%;" :filter-method="filterDialogTemplateOptions" @focus="resetTemplateOptionsInDialog">
+                <el-option v-for="template in templateOptionsInDialog" :key="template.id" :label="template.templateName || (template.manufacturer + ' - ' + template.modelIdentifier)" :value="template.id"></el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -128,37 +128,12 @@
                 <el-option label="离线" value="OFFLINE"></el-option>
                 <el-option label="故障" value="FAULTY"></el-option>
                 <el-option label="维护中" value="MAINTENANCE"></el-option>
+                <!-- 根据实际后端支持的状态调整，表结构中 status varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'Operational' -->
+                <!-- 如果后端使用 'Operational' 等，这里也需要对应修改 -->
               </el-select>
             </el-form-item>
           </el-col>
-           <el-col :span="12">
-            <el-form-item label="IP地址" prop="ipAddress">
-              <el-input v-model="deviceForm.ipAddress" placeholder="请输入IP地址"></el-input>
-            </el-form-item>
-          </el-col>
         </el-row>
-        <el-row>
-          <el-col :span="12">
-            <el-form-item label="MAC地址" prop="macAddress">
-              <el-input v-model="deviceForm.macAddress" placeholder="请输入MAC地址"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="固件版本" prop="firmwareVersion">
-              <el-input v-model="deviceForm.firmwareVersion" placeholder="请输入固件版本"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="12">
-            <el-form-item label="硬件版本" prop="hardwareVersion">
-              <el-input v-model="deviceForm.hardwareVersion" placeholder="请输入硬件版本"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="备注" prop="remarks">
-          <el-input type="textarea" v-model="deviceForm.remarks" placeholder="请输入备注"></el-input>
-        </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取 消</el-button>
@@ -194,10 +169,6 @@
             <el-tag :type="statusTagType(currentDevice.status)" size="small">{{ formatStatus(currentDevice.status) }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="最后上线时间">{{ currentDevice.lastOnlineTime | formatDateTime }}</el-descriptions-item>
-          <el-descriptions-item label="IP地址">{{ currentDevice.ipAddress || 'N/A' }}</el-descriptions-item>
-          <el-descriptions-item label="MAC地址">{{ currentDevice.macAddress || 'N/A' }}</el-descriptions-item>
-          <el-descriptions-item label="固件版本">{{ currentDevice.firmwareVersion || 'N/A' }}</el-descriptions-item>
-          <el-descriptions-item label="硬件版本">{{ currentDevice.hardwareVersion || 'N/A' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ currentDevice.createdAt | formatDateTime }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ currentDevice.updatedAt | formatDateTime }}</el-descriptions-item>
         </el-descriptions>
@@ -237,29 +208,16 @@ export default {
     }
   },
   data() {
-    // IP地址校验
-    const validateIpAddress = (rule, value, callback) => {
-      if (value && !/^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$/.test(value)) {
-        callback(new Error('请输入有效的IP地址'));
-      } else {
-        callback();
-      }
-    };
-    // MAC地址校验
-    const validateMacAddress = (rule, value, callback) => {
-      if (value && !/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(value)) {
-        callback(new Error('请输入有效的MAC地址 (例: 00:1A:2B:3C:4D:5E)'));
-      } else {
-        callback();
-      }
-    };
-
     return {
       loading: false,
       formLoading: false,
       deviceList: [],
-      roomOptions: [],
-      templateOptions: [],
+      roomOptions: [], // For search bar
+      templateOptions: [], // For search bar
+      allRooms: [], // Master list of all rooms
+      allDeviceTemplates: [], // Master list of all device templates
+      roomOptionsInDialog: [], // For dialog's room select (filtered)
+      templateOptionsInDialog: [], // For dialog's template select (filtered)
       searchParams: {
         name: "",
         roomId: null,
@@ -279,12 +237,7 @@ export default {
         roomId: null,
         deviceTemplateId: null,
         installationDate: null, // Store as YYYY-MM-DD string
-        status: "ONLINE", // Default status
-        ipAddress: "",
-        macAddress: "",
-        firmwareVersion: "",
-        hardwareVersion: "",
-        remarks: "",
+        status: "ONLINE", // Default status, consider matching DB default 'Operational' if applicable
       },
       deviceRules: {
         name: [{ required: true, message: "请输入设备名称", trigger: "blur" }],
@@ -292,8 +245,6 @@ export default {
         deviceTemplateId: [{ required: true, message: "请选择设备模板", trigger: "change" }],
         status: [{ required: true, message: "请选择设备状态", trigger: "change" }],
         installationDate: [{ type: 'string', message: '请选择安装日期', trigger: 'change' }],
-        ipAddress: [{ validator: validateIpAddress, trigger: 'blur' }],
-        macAddress: [{ validator: validateMacAddress, trigger: 'blur' }],
       },
       drawerVisible: false,
       currentDevice: {}, // For storing full device DTO for the drawer
@@ -338,22 +289,29 @@ export default {
     async fetchRoomOptions() {
       try {
         // Fetch all rooms, assuming the API supports a way to get all (e.g., large size)
-        // Or if your getRooms API without params returns all rooms
-        const response = await getRooms({ page: 0, size: 1000 }); // Adjust if API differs
-        this.roomOptions = response.content || [];
+        const response = await getRooms({ page: 0, size: 10000, sort: 'roomNumber,asc' }); // Adjust if API differs, ensure all are fetched
+        this.allRooms = response.content || [];
+        this.roomOptions = [...this.allRooms]; // For search bar filter
+        // this.roomOptionsInDialog = [...this.allRooms]; // Initialize dialog options - moved to open dialog
       } catch (error) {
         this.$message.error("获取房间列表失败: " + (error.message || '请稍后再试'));
+        this.allRooms = [];
         this.roomOptions = [];
+        // this.roomOptionsInDialog = [];
       }
     },
     async fetchTemplateOptions() {
       try {
         // Fetch all templates
-        const response = await getDeviceTemplates({ page: 0, size: 1000 }); // Adjust if API differs
-        this.templateOptions = response.content || [];
+        const response = await getDeviceTemplates({ page: 0, size: 10000, sort: 'templateName,asc' }); // Adjust if API differs, ensure all are fetched
+        this.allDeviceTemplates = response.content || [];
+        this.templateOptions = [...this.allDeviceTemplates]; // For search bar filter
+        // this.templateOptionsInDialog = [...this.allDeviceTemplates]; // Initialize dialog options - moved to open dialog
       } catch (error) {
         this.$message.error("获取设备模板列表失败: " + (error.message || '请稍后再试'));
+        this.allDeviceTemplates = [];
         this.templateOptions = [];
+        // this.templateOptionsInDialog = [];
       }
     },
     handleSearch() {
@@ -369,17 +327,32 @@ export default {
         page: 1,
         size: this.searchParams.size, // Keep current page size
       };
+      // Ensure search dropdowns are repopulated if they were somehow cleared, though typically not needed
+      if (this.allRooms.length > 0 && this.roomOptions.length === 0) {
+        this.roomOptions = [...this.allRooms];
+      }
+      if (this.allDeviceTemplates.length > 0 && this.templateOptions.length === 0) {
+        this.templateOptions = [...this.allDeviceTemplates];
+      }
       this.handleSearch();
     },
     handleAddDevice() {
       this.dialogTitle = "新增设备";
       this.resetForm('deviceForm'); // Resets and sets default values
       this.deviceForm.id = null; // Explicitly set id to null for new device
+      
+      this.roomOptionsInDialog = [...this.allRooms];
+      this.templateOptionsInDialog = [...this.allDeviceTemplates];
+      
       this.dialogVisible = true;
     },
     async handleEditDevice(row) {
       this.dialogTitle = "编辑设备";
       this.resetForm('deviceForm'); // Clear form first
+      
+      this.roomOptionsInDialog = [...this.allRooms];
+      this.templateOptionsInDialog = [...this.allDeviceTemplates];
+
       try {
         const response = await getDeviceById(row.id);
         this.deviceForm = { ...response };
@@ -466,14 +439,9 @@ export default {
         roomId: null,
         deviceTemplateId: null,
         installationDate: parseTime(new Date(), '{y}-{m}-{d}'), // Default to today
-        status: "ONLINE",
-        ipAddress: "",
-        macAddress: "",
-        firmwareVersion: "",
-        hardwareVersion: "",
-        remarks: "",
+        status: "ONLINE", // Consider DB default 'Operational'
       };
-      if (this.$refs[formName]) {
+      if(this.$refs[formName]) {
         this.$refs[formName].clearValidate();
       }
     },
@@ -485,6 +453,42 @@ export default {
     handleCurrentChange(newPage) {
       this.searchParams.page = newPage;
       this.fetchDeviceList();
+    },
+    filterDialogRoomOptions(query) {
+      if (query && typeof query === 'string') {
+        const lowerQuery = query.toLowerCase();
+        this.roomOptionsInDialog = this.allRooms.filter(room => {
+          const label = `${room.roomNumber || ''}${room.department ? ' (' + room.department + ')' : ''}`;
+          return label.toLowerCase().includes(lowerQuery);
+        });
+      } else {
+        this.roomOptionsInDialog = [...this.allRooms];
+      }
+    },
+    filterDialogTemplateOptions(query) {
+      if (query && typeof query === 'string') {
+        const lowerQuery = query.toLowerCase();
+        this.templateOptionsInDialog = this.allDeviceTemplates.filter(template => {
+          const labelPart1 = template.templateName || '';
+          const labelPart2 = template.manufacturer || '';
+          const labelPart3 = template.modelIdentifier || '';
+          const label = template.templateName ? labelPart1 : `${labelPart2} - ${labelPart3}`;
+          return label.toLowerCase().includes(lowerQuery);
+        });
+      } else {
+        this.templateOptionsInDialog = [...this.allDeviceTemplates];
+      }
+    },
+    // Methods to reset options on focus, ensuring full list is available before filtering starts if needed
+    resetRoomOptionsInDialog() {
+        if (this.roomOptionsInDialog.length !== this.allRooms.length) {
+             this.roomOptionsInDialog = [...this.allRooms];
+        }
+    },
+    resetTemplateOptionsInDialog() {
+        if (this.templateOptionsInDialog.length !== this.allDeviceTemplates.length) {
+            this.templateOptionsInDialog = [...this.allDeviceTemplates];
+        }
     },
     statusTagType(status) {
       return (this.statusMap[status] || this.statusMap.UNKNOWN).type;
