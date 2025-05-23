@@ -12,7 +12,7 @@
             <el-option 
               v-for="device in deviceOptions" 
               :key="device.id" 
-              :label="device.name + (device.room ? ' (' + device.room.roomNumber + (device.room.department ? ' - ' + device.room.department : '') + ')' : '')" 
+              :label="device.name + (device.roomNumber ? ` (房间: ${device.roomNumber})` : '')" 
               :value="device.id">
             </el-option>
           </el-select>
@@ -56,19 +56,19 @@
         <el-table-column prop="id" label="记录ID" width="80" align="center"></el-table-column>
         <el-table-column label="设备名称" width="250" show-overflow-tooltip align="left">
             <template slot-scope="scope">
-                {{ scope.row.device ? scope.row.device.name : 'N/A' }}
+                <!-- EnergyDataDto directly contains deviceName -->
+                {{ scope.row.deviceName || 'N/A' }}
             </template>
         </el-table-column>
-        <el-table-column label="所属房间" width="200" show-overflow-tooltip align="left">
-            <template slot-scope="scope">
-                {{ scope.row.device && scope.row.device.room ? (scope.row.device.room.roomNumber + (scope.row.device.room.department ? ' - ' + scope.row.device.room.department : '')) : 'N/A' }}
-            </template>
+        <!-- Removed "所属房间" column as EnergyDataDto does not directly provide full room details -->
+        <el-table-column prop="type" label="数据类型" width="100" align="center"> <!-- Changed prop to "type" -->
+            <template slot-scope="scope">{{ formatDataType(scope.row.type) }}</template> <!-- Changed scope.row.dataType to scope.row.type -->
         </el-table-column>
-        <el-table-column prop="dataType" label="数据类型" width="100" align="center">
-            <template slot-scope="scope">{{ formatDataType(scope.row.dataType) }}</template>
+        <el-table-column prop="value" label="瞬时值" width="150" align="center">
+            <template slot-scope="scope">{{ scope.row.value }} {{ getValueUnit(scope.row.type) }}</template> <!-- Changed scope.row.dataType to scope.row.type -->
         </el-table-column>
-        <el-table-column prop="value" label="读数" width="120" align="center">
-            <template slot-scope="scope">{{ scope.row.value }} {{ getUnit(scope.row.dataType) }}</template>
+        <el-table-column prop="consumption" label="分钟消耗量" width="150" align="center">
+            <template slot-scope="scope">{{ scope.row.consumption }} {{ scope.row.unit }}</template>
         </el-table-column>
         <el-table-column prop="timestamp" label="记录时间" width="180" align="center">
             <template slot-scope="scope">{{ scope.row.timestamp | formatDateTime }}</template>
@@ -105,8 +105,11 @@ export default {
   name: "EnergyDataManagementView",
   filters: {
     formatDateTime(time) {
+      // console.log('formatDateTime filter input:', time); // Log filter input
       if (!time) return '';
-      return parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}');
+      const formattedTime = parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}');
+      // console.log('formatDateTime filter output:', formattedTime); // Log filter output
+      return formattedTime;
     }
   },
   data() {
@@ -128,9 +131,9 @@ export default {
       },
       energyDataChartInstance: null,
       dataTypeMap: {
-        'ELECTRICITY': { text: '电能', unit: 'kWh' },
-        'WATER': { text: '水能', unit: 'm³' },
-        'HEAT': { text: '热能', unit: 'GJ' },
+        'ELECTRICITY': { text: '电能', valueUnit: 'W' }, // Wh for consumption will come from data.unit
+        'WATER': { text: '水能', valueUnit: 'L/h' },   // m³ for consumption will come from data.unit (assuming value is flow rate)
+        'HEAT': { text: '热能', valueUnit: 'kW' },    // GJ for consumption will come from data.unit (assuming value is thermal power)
         // Add other types if available
       }
     };
@@ -152,9 +155,20 @@ export default {
   methods: {
     async fetchDeviceOptions() {
       try {
-        // Fetch a large number of devices for the dropdown
-        const response = await getDevices({ page: 0, size: 10000 }); 
-        this.deviceOptions = response.content || [];
+        const response = await getDevices({ page: 0, size: 10000, sort: 'name,asc' }); 
+        // console.log('API Response from getDevices (for options):', JSON.parse(JSON.stringify(response)));
+        if (Array.isArray(response)) {
+          this.deviceOptions = response;
+        } else if (response && response.content) { // Assuming getDevices might return Page<DeviceDto>
+          this.deviceOptions = response.content || [];
+        } else if (response && response.records) { // Or if it returns a custom PageResponseDto like other APIs
+            this.deviceOptions = response.records || [];
+        }
+         else {
+          this.deviceOptions = [];
+          console.warn('Unexpected response structure from getDevices for options:', response);
+        }
+        // console.log('Processed this.deviceOptions:', JSON.parse(JSON.stringify(this.deviceOptions)));
       } catch (error) {
         this.$message.error('获取设备列表失败: ' + (error.message || '请稍后再试'));
         this.deviceOptions = [];
@@ -183,8 +197,12 @@ export default {
         }
 
         const response = await getAllEnergyData(queryParams);
-        this.energyDataList = response.content || [];
-        this.pagination.total = response.totalElements || 0;
+        console.log('API Response from getAllEnergyData:', JSON.parse(JSON.stringify(response))); // Log raw response
+
+        // Correctly access data from 'records' and total from 'total'
+        this.energyDataList = response.records || [];
+        this.pagination.total = response.total || 0;
+        console.log('Processed this.energyDataList:', JSON.parse(JSON.stringify(this.energyDataList)));
         
         this.chartVisible = true; // Show chart area after fetching data
         if (this.energyDataList.length > 0) {
@@ -273,9 +291,12 @@ export default {
 
       const selectedDevice = this.deviceOptions.find(d => d.id === this.searchParams.deviceId);
       const deviceName = selectedDevice ? selectedDevice.name : '所选设备';
-      const dataTypeInfo = this.dataTypeMap[this.searchParams.dataType] || { text: this.searchParams.dataType || '数据', unit: '' };
+      // Use dataType from searchParams to determine the valueUnit for the chart
+      const dataTypeForChart = this.searchParams.dataType || (sortedData.length > 0 ? sortedData[0].dataType : '');
+      const valueUnitForChart = this.getValueUnit(dataTypeForChart);
+      const dataTypeText = this.formatDataType(dataTypeForChart);
       
-      const seriesName = `${deviceName} - ${dataTypeInfo.text}`;
+      const seriesName = `${deviceName} - ${dataTypeText}`;
 
       const option = {
         title: {
@@ -286,7 +307,7 @@ export default {
           trigger: 'axis',
           formatter: params => {
             const param = params[0];
-            return `${param.axisValueLabel}<br/>${param.marker}${param.seriesName}: ${param.value} ${dataTypeInfo.unit}`;
+            return `${param.axisValueLabel}<br/>${param.marker}${param.seriesName}: ${param.value} ${valueUnitForChart}`;
           }
         },
         grid: {
@@ -305,7 +326,7 @@ export default {
         },
         yAxis: {
           type: 'value',
-          name: `数值 (${dataTypeInfo.unit})`,
+          name: `瞬时值 (${valueUnitForChart})`,
           axisLabel: {
             formatter: '{value}'
           }
@@ -353,10 +374,33 @@ export default {
         }
     },
     formatDataType(type) {
-      return (this.dataTypeMap[type] || { text: type }).text;
+      // console.log('formatDataType method input:', type, 'Current dataTypeMap keys:', Object.keys(this.dataTypeMap));
+      if (typeof type !== 'string') {
+        // console.warn('formatDataType: received non-string type:', type);
+        return type; // Or some default error string
+      }
+      const key = type.trim().toUpperCase(); // Normalize key, e.g., "electricity" -> "ELECTRICITY"
+      const entry = this.dataTypeMap[key];
+      if (entry) {
+        // console.log(`formatDataType: Matched key "${key}", returning text "${entry.text}"`);
+        return entry.text;
+      }
+      // console.warn(`formatDataType: No mapping found for type "${type}" (normalized to "${key}")`);
+      return type; // Fallback to raw type if no match
     },
-    getUnit(type) { // Corrected: ensure this is properly defined as a method
-      return (this.dataTypeMap[type] || { unit: '' }).unit;
+    getValueUnit(type) { 
+      if (typeof type !== 'string') {
+        return '';
+      }
+      const key = type.trim().toUpperCase(); // Normalize key
+      // console.log('getValueUnit method input:', type, 'Normalized key:', key);
+      const entry = this.dataTypeMap[key];
+      if (entry) {
+        // console.log(`getValueUnit: Matched key "${key}", returning unit "${entry.valueUnit}"`);
+        return entry.valueUnit;
+      }
+      // console.warn(`getValueUnit: No mapping found for type "${type}" (normalized to "${key}")`);
+      return ''; // Fallback to empty string if no match
     },
     handleSizeChange(newSize) {
       this.searchParams.size = newSize;
