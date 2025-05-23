@@ -3,6 +3,7 @@
     <el-card class="box-card">
       <div slot="header" class="clearfix">
         <span>设备列表</span>
+        <el-button style="float: right;" type="primary" icon="el-icon-plus" @click="handleAddDevice">新增设备</el-button>
       </div>
       <el-form :inline="true" :model="searchParams" class="demo-form-inline" @submit.native.prevent>
         <el-form-item label="设备名称">
@@ -32,8 +33,6 @@
         </el-form-item>
       </el-form>
 
-      <el-button type="primary" icon="el-icon-plus" @click="handleAddDevice" style="margin-bottom: 20px;">新增设备</el-button>
-
       <el-table
         v-loading="loading"
         :data="deviceList"
@@ -43,12 +42,14 @@
         <el-table-column prop="name" label="设备名称" width="180" show-overflow-tooltip></el-table-column>
         <el-table-column label="所属房间" width="200" show-overflow-tooltip>
           <template slot-scope="scope">
-            {{ scope.row.room ? (scope.row.room.roomNumber + (scope.row.room.department ? ' (' + scope.row.room.department + ')' : '')) : 'N/A' }}
+            <!-- Directly use roomNumber from DeviceDto -->
+            {{ scope.row.roomNumber || 'N/A' }}
           </template>
         </el-table-column>
         <el-table-column label="设备模板" width="220" show-overflow-tooltip>
           <template slot-scope="scope">
-            {{ scope.row.deviceTemplate ? (scope.row.deviceTemplate.templateName || (scope.row.deviceTemplate.manufacturer + ' - ' + scope.row.deviceTemplate.modelIdentifier)) : 'N/A' }}
+            <!-- Directly use deviceTemplateName from DeviceDto -->
+            {{ scope.row.deviceTemplateName || 'N/A' }}
           </template>
         </el-table-column>
         <el-table-column prop="installationDate" label="安装日期" width="120" align="center">
@@ -61,18 +62,12 @@
             <el-tag :type="statusTagType(scope.row.status)" size="small">{{ formatStatus(scope.row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="lastOnlineTime" label="最后上线时间" width="160" align="center">
-            <template slot-scope="scope">
-                {{ scope.row.lastOnlineTime | formatDateTime }}
-            </template>
-        </el-table-column>
-        <el-table-column prop="ipAddress" label="IP地址" width="130" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="remarks" label="备注" show-overflow-tooltip></el-table-column>
-        <el-table-column label="操作" width="230" fixed="right" align="center">
+        <!-- Removed lastOnlineTime column as it's not in DeviceDto.java -->
+        <el-table-column label="操作" width="280" fixed="right" align="center">
           <template slot-scope="scope">
-            <el-button type="text" size="mini" icon="el-icon-view" @click="handleViewDevice(scope.row)">详情</el-button>
-            <el-button type="text" size="mini" icon="el-icon-edit" @click="handleEditDevice(scope.row)">编辑</el-button>
-            <el-button type="text" size="mini" icon="el-icon-delete" style="color: #F56C6C;" @click="handleDeleteDevice(scope.row)">删除</el-button>
+            <el-button type="info" size="mini" icon="el-icon-view" @click="handleViewDevice(scope.row)">详情</el-button>
+            <el-button type="primary" size="mini" icon="el-icon-edit" @click="handleEditDevice(scope.row)">编辑</el-button>
+            <el-button type="danger" size="mini" icon="el-icon-delete" @click="handleDeleteDevice(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -146,43 +141,62 @@
       :title="currentDevice.name ? '设备详情: ' + currentDevice.name : '设备详情'"
       :visible.sync="drawerVisible"
       direction="rtl"
-      size="50%"
-      destroy-on-close>
-      <div v-if="currentDevice.id" style="padding: 20px;">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="设备ID">{{ currentDevice.id }}</el-descriptions-item>
-          <el-descriptions-item label="设备名称">{{ currentDevice.name }}</el-descriptions-item>
-          <el-descriptions-item label="所属房间">
-            {{ currentDevice.room ? (currentDevice.room.roomNumber + (currentDevice.room.department ? ' (' + currentDevice.room.department + ')' : '')) : 'N/A' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="房间位置">
-            {{ currentDevice.room ? currentDevice.room.location : 'N/A' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="设备模板">
-            {{ currentDevice.deviceTemplate ? (currentDevice.deviceTemplate.templateName || (currentDevice.deviceTemplate.manufacturer + ' - ' + currentDevice.deviceTemplate.modelIdentifier)) : 'N/A' }}
-          </el-descriptions-item>
-           <el-descriptions-item label="模板型号">
-            {{ currentDevice.deviceTemplate ? currentDevice.deviceTemplate.modelIdentifier : 'N/A' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="安装日期">{{ currentDevice.installationDate | formatDate }}</el-descriptions-item>
-          <el-descriptions-item label="设备状态">
-            <el-tag :type="statusTagType(currentDevice.status)" size="small">{{ formatStatus(currentDevice.status) }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="最后上线时间">{{ currentDevice.lastOnlineTime | formatDateTime }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ currentDevice.createdAt | formatDateTime }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ currentDevice.updatedAt | formatDateTime }}</el-descriptions-item>
-        </el-descriptions>
-        <el-descriptions :column="1" border style="margin-top: 20px;">
-            <el-descriptions-item label="备注">{{ currentDevice.remarks || '无' }}</el-descriptions-item>
-        </el-descriptions>
-        <div v-if="currentDevice.deviceTemplate && currentDevice.deviceTemplate.specificationsJson" style="margin-top: 20px;">
-            <h4>模板规格参数:</h4>
-            <pre style="background-color: #f5f5f5; padding: 10px; border-radius: 4px;">{{ currentDevice.deviceTemplate.specificationsJson }}</pre>
-        </div>
+      size="60%"
+      destroy-on-close
+      @opened="loadDetailedInfoForDrawer"
+      @close="clearDetailedInfo">
+      <div v-loading="loadingDrawerDetails" style="padding: 20px;">
+        <div v-if="currentDevice.id">
+          <el-descriptions title="设备基本信息" :column="2" border>
+            <el-descriptions-item label="设备ID">{{ currentDevice.id }}</el-descriptions-item>
+            <el-descriptions-item label="设备名称">{{ currentDevice.name }}</el-descriptions-item>
+            <el-descriptions-item label="安装日期">{{ currentDevice.installationDate | formatDate }}</el-descriptions-item>
+            <el-descriptions-item label="设备状态">
+              <el-tag :type="statusTagType(currentDevice.status)" size="small">{{ formatStatus(currentDevice.status) }}</el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
 
-      </div>
-      <div v-else style="padding: 20px; text-align: center;">
-        <p>暂无设备详情或加载中...</p>
+          <el-descriptions v-if="detailedRoomInfo" title="关联房间信息" :column="2" border style="margin-top: 20px;">
+            <el-descriptions-item label="房间ID">{{ detailedRoomInfo.id }}</el-descriptions-item>
+            <el-descriptions-item label="房间号">{{ detailedRoomInfo.roomNumber }}</el-descriptions-item>
+            <el-descriptions-item label="房间名称">{{ detailedRoomInfo.name }}</el-descriptions-item>
+            <el-descriptions-item label="楼层">{{ detailedRoomInfo.floor }}</el-descriptions-item>
+            <el-descriptions-item label="部门">{{ detailedRoomInfo.department }}</el-descriptions-item>
+            <el-descriptions-item label="描述" :span="2">{{ detailedRoomInfo.description }}</el-descriptions-item>
+          </el-descriptions>
+          <div v-else-if="currentDevice.roomId" style="margin-top: 20px; padding:10px; border: 1px solid #EBEEF5; border-radius: 4px;">加载房间详细信息中...</div>
+
+
+          <el-descriptions v-if="detailedTemplateInfo" title="关联设备模板信息" :column="2" border style="margin-top: 20px;">
+            <el-descriptions-item label="模板ID">{{ detailedTemplateInfo.id }}</el-descriptions-item>
+            <el-descriptions-item label="模板名称">{{ detailedTemplateInfo.templateName }}</el-descriptions-item>
+            <el-descriptions-item label="制造商">{{ detailedTemplateInfo.manufacturer }}</el-descriptions-item>
+            <el-descriptions-item label="型号标识">{{ detailedTemplateInfo.modelIdentifier }}</el-descriptions-item>
+            <el-descriptions-item label="设备类别">{{ detailedTemplateInfo.deviceCategory }}</el-descriptions-item>
+            <el-descriptions-item label="额定功率(W)">{{ detailedTemplateInfo.nominalPowerWatts }}</el-descriptions-item>
+            <el-descriptions-item label="预计寿命(年)">{{ detailedTemplateInfo.estimatedLifespanYears }}</el-descriptions-item>
+            <el-descriptions-item label="额定耗水量(L/h)">{{ detailedTemplateInfo.nominalWaterConsumptionLph }}</el-descriptions-item>
+            <el-descriptions-item label="额定耗气量(m³/h)">{{ detailedTemplateInfo.nominalGasConsumptionM3ph }}</el-descriptions-item>
+            <el-descriptions-item label="图片URL" :span="2">
+                <el-image v-if="detailedTemplateInfo.imageUrl" :src="detailedTemplateInfo.imageUrl" fit="contain" style="width: 100px; height: 100px">
+                    <div slot="error" class="image-slot">
+                        <i class="el-icon-picture-outline"></i>
+                    </div>
+                </el-image>
+                <span v-else>无</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="模板描述" :span="2">{{ detailedTemplateInfo.description }}</el-descriptions-item>
+            <el-descriptions-item label="规格参数(JSON)" :span="2">
+              <pre v-if="detailedTemplateInfo.specificationsJson" style="background-color: #f5f5f5; padding: 10px; border-radius: 4px;">{{ formatJson(detailedTemplateInfo.specificationsJson) }}</pre>
+              <span v-else>无</span>
+            </el-descriptions-item>
+          </el-descriptions>
+          <div v-else-if="currentDevice.deviceTemplateId" style="margin-top: 20px; padding:10px; border: 1px solid #EBEEF5; border-radius: 4px;">加载设备模板详细信息中...</div>
+
+        </div>
+        <div v-else style="padding: 20px; text-align: center;">
+          <p>暂无设备详情或加载中...</p>
+        </div>
       </div>
     </el-drawer>
 
@@ -190,9 +204,10 @@
 </template>
 
 <script>
-import { getDevices, createDevice, updateDevice, deleteDevice, getDeviceById } from '@/api/device';
-import { getRooms } from '@/api/room'; // Assuming page and size can be passed
-import { getDeviceTemplates } from '@/api/deviceTemplate'; // Assuming page and size can be passed
+import { getDevices, createDevice, updateDevice, getDeviceById } from '@/api/device';
+// Assuming getRoomById exists in room.js and getDeviceTemplateById in deviceTemplate.js
+import { getRooms, getRoomById } from '@/api/room'; 
+import { getDeviceTemplates, getDeviceTemplateById } from '@/api/deviceTemplate'; 
 import { parseTime } from '@/utils';
 
 export default {
@@ -247,7 +262,10 @@ export default {
         installationDate: [{ type: 'string', message: '请选择安装日期', trigger: 'change' }],
       },
       drawerVisible: false,
-      currentDevice: {}, // For storing full device DTO for the drawer
+      currentDevice: {}, // For storing basic device DTO for the drawer
+      detailedRoomInfo: null, // For storing full room DTO
+      detailedTemplateInfo: null, // For storing full template DTO
+      loadingDrawerDetails: false, // Loading state for drawer's detailed content
       statusMap: {
         ONLINE: { text: '在线', type: 'success' },
         OFFLINE: { text: '离线', type: 'info' },
@@ -276,10 +294,29 @@ export default {
           size: Number(this.searchParams.size),
         };
         const response = await getDevices(params);
-        this.deviceList = response.content || [];
-        this.pagination.total = response.totalElements || 0;
+        console.log('API Response from getDevices:', JSON.parse(JSON.stringify(response))); // Log raw response
+        
+        // Correctly assign if response is an array directly
+        if (Array.isArray(response)) {
+          this.deviceList = response;
+          // If the API doesn't return totalElements for non-paged results,
+          // and you still want to show total in pagination based on current list length:
+          this.pagination.total = response.length; 
+        } else if (response && response.content) {
+          // Handle paged response if API might return it in other scenarios
+          this.deviceList = response.content || [];
+          this.pagination.total = response.totalElements || 0;
+        } else {
+          // Fallback for unexpected structure
+          this.deviceList = [];
+          this.pagination.total = 0;
+          console.warn('Unexpected response structure from getDevices:', response);
+        }
+        
+        console.log('Processed this.deviceList:', JSON.parse(JSON.stringify(this.deviceList)));
       } catch (error) {
         this.$message.error("获取设备列表失败: " + (error.message || '请稍后再试'));
+        console.error('Error fetching device list:', error); // Log the error
         this.deviceList = [];
         this.pagination.total = 0;
       } finally {
@@ -290,11 +327,15 @@ export default {
       try {
         // Fetch all rooms, assuming the API supports a way to get all (e.g., large size)
         const response = await getRooms({ page: 0, size: 10000, sort: 'roomNumber,asc' }); // Adjust if API differs, ensure all are fetched
-        this.allRooms = response.content || [];
+        console.log('API Response from getRooms:', JSON.parse(JSON.stringify(response))); // Log the raw response
+        // Correctly access the list of rooms from the 'records' property
+        this.allRooms = response.records || []; 
+        console.log('Processed this.allRooms:', JSON.parse(JSON.stringify(this.allRooms)));
         this.roomOptions = [...this.allRooms]; // For search bar filter
         // this.roomOptionsInDialog = [...this.allRooms]; // Initialize dialog options - moved to open dialog
       } catch (error) {
         this.$message.error("获取房间列表失败: " + (error.message || '请稍后再试'));
+        console.error('Error fetching room options:', error); // Log the error
         this.allRooms = [];
         this.roomOptions = [];
         // this.roomOptionsInDialog = [];
@@ -304,11 +345,15 @@ export default {
       try {
         // Fetch all templates
         const response = await getDeviceTemplates({ page: 0, size: 10000, sort: 'templateName,asc' }); // Adjust if API differs, ensure all are fetched
-        this.allDeviceTemplates = response.content || [];
+        console.log('API Response from getDeviceTemplates:', JSON.parse(JSON.stringify(response))); // Log the raw response
+        // Correctly access the list of templates, as the response is the array itself
+        this.allDeviceTemplates = response || []; 
+        console.log('Processed this.allDeviceTemplates:', JSON.parse(JSON.stringify(this.allDeviceTemplates)));
         this.templateOptions = [...this.allDeviceTemplates]; // For search bar filter
         // this.templateOptionsInDialog = [...this.allDeviceTemplates]; // Initialize dialog options - moved to open dialog
       } catch (error) {
         this.$message.error("获取设备模板列表失败: " + (error.message || '请稍后再试'));
+        console.error('Error fetching template options:', error); // Log the error
         this.allDeviceTemplates = [];
         this.templateOptions = [];
         // this.templateOptionsInDialog = [];
@@ -354,14 +399,18 @@ export default {
       this.templateOptionsInDialog = [...this.allDeviceTemplates];
 
       try {
-        const response = await getDeviceById(row.id);
-        this.deviceForm = { ...response };
-        // Ensure IDs for selects are numbers if they come as strings from API (though usually not an issue)
-        this.deviceForm.roomId = response.room ? response.room.id : null;
-        this.deviceForm.deviceTemplateId = response.deviceTemplate ? response.deviceTemplate.id : null;
-         // installationDate from backend is likely already 'yyyy-MM-dd' string or can be parsed
-        if (response.installationDate && typeof response.installationDate !== 'string') {
-            this.deviceForm.installationDate = parseTime(response.installationDate, '{y}-{m}-{d}');
+        const deviceData = await getDeviceById(row.id); 
+        
+        this.deviceForm.id = deviceData.id;
+        this.deviceForm.name = deviceData.name;
+        this.deviceForm.roomId = deviceData.roomId; 
+        this.deviceForm.deviceTemplateId = deviceData.deviceTemplateId; 
+        this.deviceForm.status = deviceData.status;
+        
+        if (deviceData.installationDate) {
+            this.deviceForm.installationDate = parseTime(deviceData.installationDate, '{y}-{m}-{d}');
+        } else {
+            this.deviceForm.installationDate = null;
         }
 
         this.dialogVisible = true;
@@ -370,36 +419,60 @@ export default {
       }
     },
     async handleViewDevice(row) {
-        this.currentDevice = {}; // Clear previous data
-        this.drawerVisible = true;
+        // Store the basic device info first to open drawer quickly
+        // Detailed info will be loaded via @opened event of drawer
         try {
-            const response = await getDeviceById(row.id);
-            this.currentDevice = response;
+            this.currentDevice = await getDeviceById(row.id); // Fetch basic info first
+            this.drawerVisible = true;
         } catch (error) {
-            this.$message.error("获取设备详情失败: " + (error.message || '请稍后再试'));
-            this.currentDevice = { name: '加载失败' }; // Indicate error in drawer
+             this.$message.error("获取设备基本信息失败: " + (error.message || '请稍后再试'));
+             this.currentDevice = { name: '加载失败' };
+             this.drawerVisible = true; // Still open drawer to show error
         }
     },
-    handleDeleteDevice(row) {
-      this.$confirm(`确定删除设备 "${row.name}"? 此操作不可恢复。`, "警告", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      }).then(async () => {
+    async loadDetailedInfoForDrawer() {
+        if (!this.currentDevice || !this.currentDevice.id) return;
+
+        this.loadingDrawerDetails = true;
+        this.detailedRoomInfo = null;
+        this.detailedTemplateInfo = null;
+
+        const { roomId, deviceTemplateId } = this.currentDevice;
+
         try {
-          await deleteDevice(row.id);
-          this.$message.success("设备删除成功");
-          // Refresh list, consider if current page becomes empty
-          if (this.deviceList.length === 1 && this.searchParams.page > 1) {
-            this.searchParams.page -= 1;
-          }
-          this.fetchDeviceList();
-        } catch (error) {
-          this.$message.error("删除设备失败: " + (error.message || '请稍后再试'));
+            if (roomId) {
+                this.detailedRoomInfo = await getRoomById(roomId);
+            }
+        } catch (roomError) {
+            console.error('Error fetching detailed room info:', roomError);
+            this.$message.error("获取关联房间详细信息失败");
         }
-      }).catch(() => {
-        this.$message.info("已取消删除");
-      });
+
+        try {
+            if (deviceTemplateId) {
+                this.detailedTemplateInfo = await getDeviceTemplateById(deviceTemplateId);
+            }
+        } catch (templateError) {
+            console.error('Error fetching detailed template info:', templateError);
+            this.$message.error("获取关联设备模板详细信息失败");
+        } finally {
+            this.loadingDrawerDetails = false;
+        }
+    },
+    clearDetailedInfo() {
+        // Called when drawer is closed
+        this.currentDevice = {};
+        this.detailedRoomInfo = null;
+        this.detailedTemplateInfo = null;
+    },
+    formatJson(jsonString) {
+      if (!jsonString) return '无';
+      try {
+        const obj = JSON.parse(jsonString);
+        return JSON.stringify(obj, null, 2); // Pretty print JSON
+      } catch (e) {
+        return jsonString; // Return as is if not valid JSON
+      }
     },
     submitDeviceForm() {
       this.$refs.deviceForm.validate(async (valid) => {

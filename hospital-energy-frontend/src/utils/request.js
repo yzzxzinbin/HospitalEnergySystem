@@ -40,7 +40,12 @@ service.interceptors.response.use(
       // 如果后端响应体中明确带有 code 字段，则以 code 为准判断业务成功/失败
       if (res && typeof res.code !== 'undefined') {
         if (res.code === 200 || res.code === 20000) { // 业务成功代码
-          return res;
+          // 如果响应结构是 { code, message, data: payload }, 返回 res.data
+          // 如果响应结构是 { code, message, payload_fields_at_root }, 返回 res (需要调用方处理 code/message)
+          // 假设常见的 { code, message, data: payload } 结构
+          return res.data !== undefined ? res.data : res; // Return res.data if it exists, otherwise res itself.
+                                                        // This handles cases where 'data' might be null for success (e.g. delete success)
+                                                        // or if payload is at root. For lists, res.data is expected.
         } else { // 业务失败代码
           Message({
             message: res.message || 'Error',
