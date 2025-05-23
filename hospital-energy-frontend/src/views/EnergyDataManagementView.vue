@@ -105,11 +105,54 @@ export default {
   name: "EnergyDataManagementView",
   filters: {
     formatDateTime(time) {
-      // console.log('formatDateTime filter input:', time); // Log filter input
+      console.log('[formatDateTime] Input time:', time); 
       if (!time) return '';
-      const formattedTime = parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}');
-      // console.log('formatDateTime filter output:', formattedTime); // Log filter output
-      return formattedTime;
+
+      // 1. 直接尝试用 new Date() 解析时间字符串
+      const dateObj = new Date(time);
+      console.log('[formatDateTime] Created Date object from input:', dateObj);
+
+      // 2. 检查 Date 对象是否有效
+      if (isNaN(dateObj.getTime())) {
+        console.error('[formatDateTime] Failed to parse time string into a valid Date object. Input was:', time, '. Resulting Date object is Invalid.');
+        return '时间解析失败'; // 返回一个明确的错误提示
+      }
+      
+      // 3. 如果 Date 对象有效，再尝试用 parseTime 工具函数格式化
+      // 注意：parseTime 函数本身可能也有自己的 new Date(time) 逻辑
+      const formattedTimeFromParseTime = parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}');
+      console.log('[formatDateTime] Output from parseTime utility:', formattedTimeFromParseTime); 
+      
+      // 4. 检查 parseTime 的输出是否是 "0-0-0..." 这种异常格式
+      //    如果 parseTime 返回了异常值，但我们知道 dateObj 是有效的，则尝试手动格式化
+      if (typeof formattedTimeFromParseTime === 'string' && 
+          (formattedTimeFromParseTime.startsWith('0-0-0') || formattedTimeFromParseTime.toLowerCase().includes('invalid'))) {
+          console.warn('[formatDateTime] parseTime utility returned an unexpected/error value. Attempting manual formatting using the valid Date object.');
+          try {
+            const year = dateObj.getFullYear();
+            const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+            const day = dateObj.getDate().toString().padStart(2, '0');
+            const hours = dateObj.getHours().toString().padStart(2, '0');
+            const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+            const seconds = dateObj.getSeconds().toString().padStart(2, '0');
+            
+            // 确保年份不是0或NaN等异常情况
+            if (isNaN(year) || year === 0 || year < 1000) {
+                 console.error('[formatDateTime] Manual formatting: Year is invalid from Date object.', dateObj);
+                 return '手动格式化年份错误';
+            }
+
+            const manualFormattedTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            console.log('[formatDateTime] Manually formatted time:', manualFormattedTime);
+            return manualFormattedTime;
+          } catch (e) {
+            console.error('[formatDateTime] Error during manual formatting:', e);
+            return '手动格式化异常';
+          }
+      }
+      
+      // 5. 如果 parseTime 的输出看起来正常，则返回它
+      return formattedTimeFromParseTime;
     }
   },
   data() {
