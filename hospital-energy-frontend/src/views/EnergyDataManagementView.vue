@@ -18,9 +18,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="数据类型">
-          <el-select v-model="searchParams.dataType" placeholder="请选择数据类型" clearable style="width: 150px;">
+          <el-select v-model="searchParams.type" placeholder="请选择数据类型" clearable style="width: 150px;">
             <el-option label="电能" value="ELECTRICITY"></el-option>
             <el-option label="水能" value="WATER"></el-option>
+            <el-option label="气能" value="GAS"></el-option>
             <el-option label="热能" value="HEAT"></el-option>
             <!-- Add other types if available, e.g., GAS -->
           </el-select>
@@ -73,9 +74,7 @@
         <el-table-column prop="timestamp" label="记录时间" width="180" align="center">
             <template slot-scope="scope">{{ scope.row.timestamp | formatDateTime }}</template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180" align="center">
-            <template slot-scope="scope">{{ scope.row.createdAt | formatDateTime }}</template>
-        </el-table-column>
+        <!-- Removed createdAt column as it's not in EnergyDataDto -->
       </el-table>
 
       <!-- 分页组件 -->
@@ -105,54 +104,44 @@ export default {
   name: "EnergyDataManagementView",
   filters: {
     formatDateTime(time) {
-      console.log('[formatDateTime] Input time:', time); 
+      // console.log('[formatDateTime] Input time:', time); 
       if (!time) return '';
 
-      // 1. 直接尝试用 new Date() 解析时间字符串
       const dateObj = new Date(time);
-      console.log('[formatDateTime] Created Date object from input:', dateObj);
+      // console.log('[formatDateTime] Created Date object from input:', dateObj);
 
-      // 2. 检查 Date 对象是否有效
       if (isNaN(dateObj.getTime())) {
-        console.error('[formatDateTime] Failed to parse time string into a valid Date object. Input was:', time, '. Resulting Date object is Invalid.');
-        return '时间解析失败'; // 返回一个明确的错误提示
+        console.error('[formatDateTime] Failed to parse time string with new Date(). Input was:', time);
+        // Attempt to use parseTime only if new Date() fails, as a last resort.
+        const formattedByParseTime = parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}');
+        if (formattedByParseTime && typeof formattedByParseTime === 'string' && !formattedByParseTime.startsWith('0-0-0') && !formattedByParseTime.toLowerCase().includes('invalid')) {
+            // console.warn('[formatDateTime] new Date() failed, but parseTime produced a potentially valid result:', formattedByParseTime);
+            return formattedByParseTime;
+        }
+        return '时间解析失败'; 
       }
       
-      // 3. 如果 Date 对象有效，再尝试用 parseTime 工具函数格式化
-      // 注意：parseTime 函数本身可能也有自己的 new Date(time) 逻辑
-      const formattedTimeFromParseTime = parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}');
-      console.log('[formatDateTime] Output from parseTime utility:', formattedTimeFromParseTime); 
-      
-      // 4. 检查 parseTime 的输出是否是 "0-0-0..." 这种异常格式
-      //    如果 parseTime 返回了异常值，但我们知道 dateObj 是有效的，则尝试手动格式化
-      if (typeof formattedTimeFromParseTime === 'string' && 
-          (formattedTimeFromParseTime.startsWith('0-0-0') || formattedTimeFromParseTime.toLowerCase().includes('invalid'))) {
-          console.warn('[formatDateTime] parseTime utility returned an unexpected/error value. Attempting manual formatting using the valid Date object.');
-          try {
-            const year = dateObj.getFullYear();
-            const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-            const day = dateObj.getDate().toString().padStart(2, '0');
-            const hours = dateObj.getHours().toString().padStart(2, '0');
-            const minutes = dateObj.getMinutes().toString().padStart(2, '0');
-            const seconds = dateObj.getSeconds().toString().padStart(2, '0');
-            
-            // 确保年份不是0或NaN等异常情况
-            if (isNaN(year) || year === 0 || year < 1000) {
-                 console.error('[formatDateTime] Manual formatting: Year is invalid from Date object.', dateObj);
-                 return '手动格式化年份错误';
-            }
+      // new Date() succeeded, proceed with manual formatting.
+      try {
+        const year = dateObj.getFullYear();
+        const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const day = dateObj.getDate().toString().padStart(2, '0');
+        const hours = dateObj.getHours().toString().padStart(2, '0');
+        const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+        const seconds = dateObj.getSeconds().toString().padStart(2, '0');
+        
+        if (isNaN(year) || year === 0 || year < 1000) { // Basic sanity check for year
+             console.error('[formatDateTime] Manual formatting: Year is invalid from Date object.', dateObj);
+             return '手动格式化年份错误';
+        }
 
-            const manualFormattedTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-            console.log('[formatDateTime] Manually formatted time:', manualFormattedTime);
-            return manualFormattedTime;
-          } catch (e) {
-            console.error('[formatDateTime] Error during manual formatting:', e);
-            return '手动格式化异常';
-          }
+        const manualFormattedTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        // console.log('[formatDateTime] Manually formatted time (new Date() worked):', manualFormattedTime);
+        return manualFormattedTime;
+      } catch (e) {
+        console.error('[formatDateTime] Error during manual formatting:', e);
+        return '手动格式化异常';
       }
-      
-      // 5. 如果 parseTime 的输出看起来正常，则返回它
-      return formattedTimeFromParseTime;
     }
   },
   data() {
@@ -164,7 +153,7 @@ export default {
       deviceOptions: [], 
       searchParams: {
         deviceId: null,
-        dataType: '', // Example: ELECTRICITY, WATER, HEAT
+        type: '', // Changed from dataType to type. Example: ELECTRICITY, WATER, GAS, HEAT
         dateRange: [], // [startTime, endTime]
         page: 1,
         size: 10,
@@ -174,9 +163,10 @@ export default {
       },
       energyDataChartInstance: null,
       dataTypeMap: {
-        'ELECTRICITY': { text: '电能', valueUnit: 'W' }, // Wh for consumption will come from data.unit
-        'WATER': { text: '水能', valueUnit: 'L/h' },   // m³ for consumption will come from data.unit (assuming value is flow rate)
-        'HEAT': { text: '热能', valueUnit: 'kW' },    // GJ for consumption will come from data.unit (assuming value is thermal power)
+        'ELECTRICITY': { text: '电能', valueUnit: 'W' }, 
+        'WATER': { text: '水能', valueUnit: 'L/h' },   
+        'GAS': { text: '气能', valueUnit: 'm³/h' }, // Added GAS
+        'HEAT': { text: '热能', valueUnit: 'kW' },    
         // Add other types if available
       }
     };
@@ -225,7 +215,7 @@ export default {
           page: this.searchParams.page - 1, // Spring Pageable is 0-indexed
           size: this.searchParams.size,
           deviceId: this.searchParams.deviceId,
-          dataType: this.searchParams.dataType,
+          type: this.searchParams.type, // Changed from dataType to type
         };
         if (this.searchParams.dateRange && this.searchParams.dateRange.length === 2) {
           queryParams.startTime = this.searchParams.dateRange[0];
@@ -276,7 +266,7 @@ export default {
     resetSearch() {
       this.searchParams = {
         deviceId: null,
-        dataType: '',
+        type: '', // Changed from dataType to type
         dateRange: [],
         page: 1,
         size: this.searchParams.size, // Keep current page size
@@ -330,12 +320,49 @@ export default {
       const sortedData = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       
       const chartDataValues = sortedData.map(item => item.value);
-      const chartDataTimestamps = sortedData.map(item => parseTime(item.timestamp, '{y}-{m}-{d} {h}:{i}'));
+      
+      const chartDataTimestamps = sortedData.map(item => {
+        const time = item.timestamp;
+        // console.log('[initEnergyDataChart] Processing timestamp for chart:', time);
+        if (!time) {
+            // console.log('[initEnergyDataChart] Empty timestamp for chart item.');
+            return ''; // Return empty string for undefined/null timestamps
+        }
+
+        const dateObj = new Date(time);
+        if (isNaN(dateObj.getTime())) {
+          console.error('[initEnergyDataChart] Failed to parse timestamp for chart with new Date():', time);
+          return '解析失败'; // Return error string if new Date() fails
+        }
+
+        // new Date() succeeded, proceed with manual formatting for chart.
+        try {
+          const year = dateObj.getFullYear();
+          const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+          const day = dateObj.getDate().toString().padStart(2, '0');
+          const hours = dateObj.getHours().toString().padStart(2, '0');
+          const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+            
+          if (isNaN(year) || year === 0 || year < 1000) { // Basic sanity check
+               console.error('[initEnergyDataChart] Manual formatting: Year is invalid for chart.', dateObj);
+               return '年份错误';
+          }
+          // Format for chart axis (typically YYYY-MM-DD HH:mm)
+          const formattedChartTime = `${year}-${month}-${day} ${hours}:${minutes}`;
+          // console.log('[initEnergyDataChart] Successfully formatted chart timestamp:', formattedChartTime);
+          return formattedChartTime;
+        } catch (e) {
+          console.error('[initEnergyDataChart] Error during manual timestamp formatting for chart:', e);
+          return '格式化异常';
+        }
+      });
+      // console.log('[initEnergyDataChart] Final chartDataTimestamps:', JSON.parse(JSON.stringify(chartDataTimestamps)));
+
 
       const selectedDevice = this.deviceOptions.find(d => d.id === this.searchParams.deviceId);
       const deviceName = selectedDevice ? selectedDevice.name : '所选设备';
-      // Use dataType from searchParams to determine the valueUnit for the chart
-      const dataTypeForChart = this.searchParams.dataType || (sortedData.length > 0 ? sortedData[0].dataType : '');
+      // Use .type from sortedData as EnergyDataDto has 'type' not 'dataType'
+      const dataTypeForChart = this.searchParams.type || (sortedData.length > 0 ? sortedData[0].type : ''); // Changed from dataType to type
       const valueUnitForChart = this.getValueUnit(dataTypeForChart);
       const dataTypeText = this.formatDataType(dataTypeForChart);
       
