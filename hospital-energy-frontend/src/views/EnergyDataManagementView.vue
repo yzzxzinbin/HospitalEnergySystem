@@ -89,6 +89,42 @@
         :total="pagination.total">
       </el-pagination>
     </el-card>
+
+    <!-- 导出配置对话框 -->
+    <el-dialog
+      title="导出配置"
+      :visible.sync="exportDialogVisible"
+      width="600px"
+      :close-on-click-modal="false"
+      @close="resetExportForm"
+    >
+      <el-form :model="exportForm" ref="exportForm" label-width="120px">
+        <el-form-item label="选择导出字段">
+          <el-checkbox-group v-model="exportForm.fields">
+            <el-checkbox
+              v-for="field in allExportableFields"
+              :label="field.key"
+              :key="field.key"
+              style="display: block;"
+            >
+              {{ field.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="选择导出格式">
+          <el-radio-group v-model="exportForm.format">
+            <el-radio label="csv">CSV</el-radio>
+            <el-radio label="json">JSON</el-radio>
+            <el-radio label="excel">Excel (兼容CSV)</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="exportDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="confirmExport" :loading="exportLoading">确 定导出</el-button>
+      </span>
+    </el-dialog>
+
   </div>
 </template>
 
@@ -147,6 +183,7 @@ export default {
   data() {
     return {
       loading: false,
+      exportLoading: false, // Added for export button loading state
       chartVisible: false, // Controls visibility of the chart card
       searchAttempted: false, // To show empty state for chart only after a search
       energyDataList: [],
@@ -168,7 +205,23 @@ export default {
         'GAS': { text: '气能', valueUnit: 'm³/h' }, // Added GAS
         'HEAT': { text: '热能', valueUnit: 'kW' },    
         // Add other types if available
-      }
+      },
+      // Export related data
+      exportDialogVisible: false,
+      exportForm: {
+        fields: [],
+        format: 'csv', // Default format
+      },
+      allExportableFields: [
+        { key: 'id', label: '记录ID' },
+        { key: 'deviceName', label: '设备名称' },
+        { key: 'type', label: '数据类型', processor: (item) => this.formatDataType(item.type) },
+        { key: 'value', label: '瞬时值', processor: (item) => item.value },
+        { key: 'valueUnit', label: '瞬时值单位', processor: (item) => this.getValueUnit(item.type) },
+        { key: 'consumption', label: '分钟消耗量', processor: (item) => item.consumption },
+        { key: 'unit', label: '消耗量单位', processor: (item) => item.unit },
+        { key: 'timestamp', label: '记录时间', processor: (item) => this.$options.filters.formatDateTime(item.timestamp) },
+      ],
     };
   },
   created() {
@@ -184,6 +237,7 @@ export default {
       this.energyDataChartInstance.dispose();
       this.energyDataChartInstance = null;
     }
+    window.removeEventListener('resize', this.resizeChart); // Ensure listener is removed
   },
   methods: {
     async fetchDeviceOptions() {
@@ -287,17 +341,84 @@ export default {
         this.$message.warning("没有数据可导出");
         return;
       }
-      this.$confirm("确定导出当前查询结果的能源数据吗?", "提示", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "info",
-      }).then(() => {
-        this.$message.info('导出功能后端API暂未实现。');
-        // TODO: Implement export when backend API is available
-        // Example: exportEnergyData(this.searchParams).then(response => { ...handle file download... });
-      }).catch(() => {
-        this.$message.info("已取消导出");
+      // Initialize export form - pre-select all fields
+      this.exportForm.fields = this.allExportableFields.map(f => f.key);
+      this.exportForm.format = 'csv'; // Default format
+      this.exportDialogVisible = true;
+    },
+    resetExportForm() {
+        this.exportForm.fields = [];
+        this.exportForm.format = 'csv';
+    },
+    confirmExport() {
+      if (this.exportForm.fields.length === 0) {
+        this.$message.warning("请至少选择一个导出字段");
+        return;
+      }
+      this.exportLoading = true;
+      try {
+        const dataToExport = this.prepareDataForExport();
+        const fileNameBase = `energy_data_${parseTime(new Date(), '{y}{m}{d}{h}{i}{s}')}`;
+
+        if (this.exportForm.format === 'csv') {
+          this.exportAsCsv(dataToExport, `${fileNameBase}.csv`);
+        } else if (this.exportForm.format === 'json') {
+          this.exportAsJson(dataToExport, `${fileNameBase}.json`);
+        } else if (this.exportForm.format === 'excel') {
+          // For Excel, we'll export as CSV but with .xls extension for basic compatibility
+          this.exportAsCsv(dataToExport, `${fileNameBase}.xls`);
+        }
+        this.$message.success("数据已开始准备导出");
+        this.exportDialogVisible = false;
+      } catch (error) {
+        console.error("导出失败:", error);
+        this.$message.error("导出过程中发生错误");
+      } finally {
+        this.exportLoading = false;
+      }
+    },
+    prepareDataForExport() {
+      const selectedFields = this.allExportableFields.filter(f => this.exportForm.fields.includes(f.key));
+      
+      return this.energyDataList.map(item => {
+        const row = {};
+        selectedFields.forEach(field => {
+          row[field.label] = field.processor ? field.processor(item) : item[field.key];
+        });
+        return row;
       });
+    },
+    _downloadFile(content, fileName, mimeType) {
+      const a = document.createElement('a');
+      const blob = new Blob([content], { type: mimeType });
+      a.href = URL.createObjectURL(blob);
+      a.setAttribute('download', fileName);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    },
+    exportAsCsv(data, fileName) {
+      if (!data || data.length === 0) return;
+      const headers = Object.keys(data[0]);
+      let csvContent = "\uFEFF"; // BOM for UTF-8 Excel compatibility
+
+      csvContent += headers.join(',') + '\r\n';
+
+      data.forEach(item => {
+        const row = headers.map(header => {
+          let cell = item[header] === null || item[header] === undefined ? '' : String(item[header]);
+          // Escape commas and quotes
+          cell = cell.includes(',') || cell.includes('"') || cell.includes('\n') ? `"${cell.replace(/"/g, '""')}"` : cell;
+          return cell;
+        });
+        csvContent += row.join(',') + '\r\n';
+      });
+      this._downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
+    },
+    exportAsJson(data, fileName) {
+      const jsonContent = JSON.stringify(data, null, 2);
+      this._downloadFile(jsonContent, fileName, 'application/json;charset=utf-8;');
     },
     initEnergyDataChart(data) {
       if (!this.$refs.energyDataChart) {
