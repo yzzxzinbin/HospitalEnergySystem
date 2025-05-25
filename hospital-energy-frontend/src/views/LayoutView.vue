@@ -9,10 +9,11 @@
         :default-active="activeMenu"
         class="el-menu-vertical-demo"
         @select="handleMenuSelect"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
+        background-color="#2c3e50" 
+        text-color="#bdc3c7"    
+        active-text-color="#3498db" 
         router
+        :collapse-transition="false"
       >
         <el-menu-item index="/dashboard">
           <i class="el-icon-s-home"></i>
@@ -40,13 +41,14 @@
             <span>系统管理</span>
           </template>
           <el-menu-item index="/users">
-            <i class="el-icon-user"></i>
+            <i class="el-icon-user-solid"></i>
             <span slot="title">用户管理</span>
           </el-menu-item>
           <el-menu-item index="/profile">
-            <i class="el-icon-postcard"></i>
+            <i class="el-icon-postcard"></i> <!-- Changed icon for better distinction -->
             <span slot="title">个人中心</span>
           </el-menu-item>
+          <!-- Can add more system management items here -->
         </el-submenu>
       </el-menu>
     </el-aside>

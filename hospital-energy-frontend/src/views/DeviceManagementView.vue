@@ -177,7 +177,7 @@
             <el-descriptions-item label="预计寿命(年)">{{ detailedTemplateInfo.estimatedLifespanYears }}</el-descriptions-item>
             <el-descriptions-item label="额定耗水量(L/h)">{{ detailedTemplateInfo.nominalWaterConsumptionLph }}</el-descriptions-item>
             <el-descriptions-item label="额定耗气量(m³/h)">{{ detailedTemplateInfo.nominalGasConsumptionM3ph }}</el-descriptions-item>
-            <el-descriptions-item label="图片URL" :span="2">
+            <el-descriptions-item label="图片" :span="2">
                 <el-image v-if="detailedTemplateInfo.imageUrl" :src="detailedTemplateInfo.imageUrl" fit="contain" style="width: 100px; height: 100px">
                     <div slot="error" class="image-slot">
                         <i class="el-icon-picture-outline"></i>

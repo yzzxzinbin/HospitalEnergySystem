@@ -68,3 +68,16 @@ export function updateUserStatus(id, status) {
         data: { status }
     })
 }
+
+/**
+ * 修改当前登录用户的密码
+ * @param {object} data 包含 oldPassword 和 newPassword
+ * @returns Promise
+ */
+export function changePassword(data) {
+  return request({
+    url: '/api/users/change-password', // This is an assumed dedicated endpoint
+    method: 'put', // Or POST, depending on API design
+    data
+  });
+}

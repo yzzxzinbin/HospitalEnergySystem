@@ -53,18 +53,18 @@ const routes = [
         component: () => import('../views/DeviceTemplateManagementView.vue'),
         meta: { title: '设备模板', icon: 'el-icon-document-copy' },
       },
-    //   {
-    //     path: 'users',
-    //     name: 'UserManagement',
-    //     component: () => import('../views/UserManagementView.vue'),
-    //     meta: { title: '用户管理', icon: 'el-icon-user' },
-    //   },
-    //   {
-    //     path: 'profile',
-    //     name: 'UserProfile',
-    //     component: () => import('../views/UserProfileView.vue'),
-    //     meta: { title: '个人中心', icon: 'el-icon-setting' },
-    //   },
+      {
+        path: 'users',
+        name: 'UserManagement',
+        component: () => import('../views/UserManagementView.vue'),
+        meta: { title: '用户管理', icon: 'el-icon-user' },
+      },
+      {
+        path: 'profile',
+        name: 'UserProfile',
+        component: () => import('../views/UserProfileView.vue'),
+        meta: { title: '个人中心', icon: 'el-icon-setting' },
+      },
     ],
   },
   // 404 页面

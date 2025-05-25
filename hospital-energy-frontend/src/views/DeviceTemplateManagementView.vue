@@ -108,7 +108,7 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="图片URL" prop="imageUrl">
+        <el-form-item label="图片" prop="imageUrl">
           <el-input v-model="templateForm.imageUrl" placeholder="请输入图片URL"></el-input>
         </el-form-item>
         <el-form-item label="描述" prop="description">
