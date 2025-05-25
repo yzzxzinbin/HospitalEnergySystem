@@ -48,6 +48,12 @@ const routes = [
         meta: { title: '能源数据', icon: 'el-icon-s-data' },
       },
       {
+        path: 'energy-analysis', // New Route
+        name: 'EnergyAnalysis',
+        component: () => import('../views/EnergyAnalysisView.vue'),
+        meta: { title: '能耗分析', icon: 'el-icon-s-marketing' },
+      },
+      {
         path: 'device-templates',
         name: 'DeviceTemplateManagement',
         component: () => import('../views/DeviceTemplateManagementView.vue'),

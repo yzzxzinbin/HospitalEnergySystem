@@ -31,6 +31,10 @@
           <i class="el-icon-s-data"></i>
           <span slot="title">能源数据</span>
         </el-menu-item>
+        <el-menu-item index="/energy-analysis">
+          <i class="el-icon-s-marketing"></i>
+          <span slot="title">能耗分析</span>
+        </el-menu-item>
         <el-menu-item index="/device-templates">
           <i class="el-icon-document-copy"></i>
           <span slot="title">设备模板</span>
