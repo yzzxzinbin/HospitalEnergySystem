@@ -310,3 +310,57 @@
         *   `end` (结束时间, ISO DATE_TIME格式)
     *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
     *   **失败响应 (404 Not Found):** 如果设备不存在。
+
+## 仪表盘 API
+
+### 1. 获取仪表盘摘要数据
+
+*   **URL:** `/api/dashboard/summary`
+*   **Method:** `GET`
+*   **Description:** 获取最新的仪表盘摘要信息，包括设备状态统计、实时能耗数据和最近7天的能耗历史。
+*   **Success Response:**
+    *   **Code:** 200 OK
+    *   **Content:** `DashboardSummaryDto`
+        ```json
+        {
+            "onlineDeviceCount": 150,
+            "offlineDeviceCount": 10,
+            "maintenanceDeviceCount": 5,
+            "faultyDeviceCount": 2,
+            "realtimeElectricityPower": 120.5,
+            "realtimeElectricityConsumption": 2850.75,
+            "realtimeWaterPower": 30.2,
+            "realtimeWaterConsumption": 750.0,
+            "realtimeGasPower": 15.8,
+            "realtimeGasConsumption": 320.5,
+            "last7DaysElectricityConsumption": [
+                {"date": "2023-10-01", "consumption": 400.0},
+                {"date": "2023-10-02", "consumption": 410.5}
+                // ... more days
+            ],
+            "last7DaysWaterConsumption": [
+                {"date": "2023-10-01", "consumption": 100.0},
+                {"date": "2023-10-02", "consumption": 105.0}
+                // ... more days
+            ],
+            "last7DaysGasConsumption": [
+                {"date": "2023-10-01", "consumption": 50.0},
+                {"date": "2023-10-02", "consumption": 52.5}
+                // ... more days
+            ],
+            "lastUpdatedAt": "2023-10-07T10:30:00"
+        }
+        ```
+*   **Error Response:**
+    *   **Code:** 404 Not Found
+    *   **Content:** If no summary data is available.
+
+### 2. 手动刷新仪表盘摘要数据
+
+*   **URL:** `/api/dashboard/refresh`
+*   **Method:** `POST`
+*   **Description:** 手动触发后台存储过程，以重新计算并更新仪表盘摘要数据。这通常由计划任务自动执行，但此端点可用于即时刷新。
+*   **Success Response:**
+    *   **Code:** 200 OK
+*   **Error Response:**
+    *   Potentially 500 Internal Server Error if the stored procedure call fails.

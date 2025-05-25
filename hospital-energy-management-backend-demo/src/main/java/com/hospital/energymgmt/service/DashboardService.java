@@ -33,6 +33,8 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public Optional<DashboardSummaryDto> getDashboardSummary() {
         Optional<DashboardSummary> summaryOptional = dashboardSummaryRepository.findCurrentDashboardSummary();
+        // Optional: Log the raw entity data before conversion for debugging
+        // summaryOptional.ifPresent(summary -> logger.info("Raw DashboardSummary entity from DB: {}", summary));
         return summaryOptional.map(this::convertToDto);
     }
 
@@ -50,6 +52,11 @@ public class DashboardService {
         dto.setRealtimeGasConsumption(entity.getRealtimeGasConsumption());
         dto.setLastUpdatedAt(entity.getLastUpdatedAt());
 
+        // Log the JSON strings before parsing for debugging
+        logger.debug("Raw JSON for electricity: {}", entity.getLast7DaysElectricityConsumption());
+        logger.debug("Raw JSON for water: {}", entity.getLast7DaysWaterConsumption());
+        logger.debug("Raw JSON for gas: {}", entity.getLast7DaysGasConsumption());
+
         // Parse JSON strings to List<DailyConsumptionDto>
         dto.setLast7DaysElectricityConsumption(parseConsumptionList(entity.getLast7DaysElectricityConsumption(), "electricity"));
         dto.setLast7DaysWaterConsumption(parseConsumptionList(entity.getLast7DaysWaterConsumption(), "water"));
@@ -60,13 +67,16 @@ public class DashboardService {
 
     private List<DailyConsumptionDto> parseConsumptionList(String jsonString, String type) {
         if (jsonString == null || jsonString.isEmpty()) {
+            logger.debug("JSON string for {} is null or empty, returning empty list.", type);
             return Collections.emptyList();
         }
         try {
+            logger.debug("Attempting to parse {} JSON string: {}", type, jsonString);
             return objectMapper.readValue(jsonString, new TypeReference<List<DailyConsumptionDto>>() {});
         } catch (IOException e) {
-            logger.error("Failed to parse {} consumption data from JSON: {}\nError: {}", type, jsonString, e.getMessage());
-            return Collections.emptyList(); // Or throw a custom exception
+            // Log the full exception and the problematic JSON string
+            logger.error("Failed to parse {} consumption data from JSON string: '{}'. Error: {}", type, jsonString, e.getMessage(), e);
+            return Collections.emptyList(); // Return an empty list on error
         }
     }
 
