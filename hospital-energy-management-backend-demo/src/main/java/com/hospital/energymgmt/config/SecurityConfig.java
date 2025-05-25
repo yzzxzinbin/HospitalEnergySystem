@@ -4,8 +4,10 @@ import com.hospital.energymgmt.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -16,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true) // Enable method-level security
 public class SecurityConfig {
 
     @Autowired
@@ -73,6 +76,14 @@ public class SecurityConfig {
                 // Permit all requests to frontend routes, which will be handled by SpaController
                 // and serve index.html. The actual resources (js, css) are ignored by webSecurityCustomizer.
                 .antMatchers("/login", "/register", "/dashboard", "/room-management", "/device-template-management", "/device-management", "/energy-data-management").permitAll()
+                
+                // User management API security
+                .antMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
+                .antMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN") // For fetching all users
+                .antMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN")
+                .antMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN")
+                .antMatchers(HttpMethod.GET, "/api/users/{id}").authenticated() // Authenticated users can attempt, @PreAuthorize will refine
+
                 .anyRequest().authenticated()
             .and()
                 .exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)

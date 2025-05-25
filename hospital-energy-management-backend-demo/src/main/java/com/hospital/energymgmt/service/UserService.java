@@ -11,6 +11,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder; // Import PasswordEncoder
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication; // Add this import
+import org.springframework.security.core.GrantedAuthority; // Import GrantedAuthority
+import org.springframework.security.core.authority.SimpleGrantedAuthority; // Import SimpleGrantedAuthority
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -108,12 +111,18 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
             for (String roleName : roleNames) {
                 Role role = roleRepository.findByName(roleName.trim())
                         .orElseGet(() -> {
-                            Role newRole = new Role(roleName.trim());
-                            // Decide if new roles should be created and saved
-                            // return roleRepository.save(newRole);
-                            return newRole; // Or throw exception if role must exist
+                            // Do not create new roles here if they don't exist, 
+                            // as this service method might be called by non-admins.
+                            // Role creation should be an admin-only operation.
+                            // For now, if a role name in DTO doesn't exist, it will be ignored
+                            // or you can throw an exception.
+                            // For simplicity, we'll try to find it, and if not found, it won't be added.
+                            // Consider adding logic to handle non-existent roles based on requirements.
+                            return roleRepository.findByName(roleName.trim()).orElse(null);
                         });
-                roles.add(role);
+                if (role != null) { // Add only if role was found
+                    roles.add(role);
+                }
             }
             user.setRoles(roles);
         }
@@ -125,6 +134,16 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
         userRepository.deleteById(id);
     }
 
+    // Method to check if the authenticated user is the owner of the resource
+    public boolean isOwner(Authentication authentication, Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        String currentUsername = authentication.getName();
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null && user.getUsername().equals(currentUsername);
+    }
+
     // 实现 UserDetailsService 接口的方法
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -132,7 +151,11 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
         if (user == null) {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }
+        Set<GrantedAuthority> authorities = user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().toUpperCase()))
+                .collect(Collectors.toSet());
+
         return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(),
-                new ArrayList<>()); // Customize authorities based on roles
+                authorities); // Use authorities from user roles
     }
 }
