@@ -1,27 +1,23 @@
 <template>
   <div class="user-management-container">
-    <el-card class="box-card page-card" shadow="hover">
-      <div slot="header" class="clearfix card-header">
-        <span class="header-title-with-icon">
-          <i class="el-icon-user-solid header-icon"></i>用户列表
-        </span>
-        <el-button style="float: right;" type="primary" icon="el-icon-plus" @click="handleAddUser" size="small">新增用户</el-button>
+    <el-card class="box-card">
+      <div slot="header" class="clearfix">
+        <span>用户列表</span>
+        <el-button style="float: right;" type="primary" icon="el-icon-plus" @click="handleAddUser">新增用户</el-button>
       </div>
 
-      <!-- 搜索和筛选区域 -->
-      <el-form :inline="true" :model="searchParams" class="search-form mb-20">
+      <!-- 搜索区域 -->
+      <el-form :inline="true" :model="searchParams" class="demo-form-inline mb-20">
         <el-form-item label="用户名">
-          <el-input v-model="searchParams.username" placeholder="请输入用户名" clearable size="small"></el-input>
+          <el-input v-model="searchParams.username" placeholder="请输入用户名" clearable></el-input>
         </el-form-item>
         <el-form-item label="邮箱">
-          <el-input v-model="searchParams.email" placeholder="请输入邮箱" clearable size="small"></el-input>
+          <el-input v-model="searchParams.email" placeholder="请输入邮箱" clearable></el-input>
         </el-form-item>
-        <el-form-item label="角色">
-          <el-input v-model="searchParams.role" placeholder="请输入角色" clearable size="small"></el-input>
-        </el-form-item>
+        <!-- Role search can be added if API supports it or for client-side filtering -->
         <el-form-item>
-          <el-button type="primary" icon="el-icon-search" @click="handleSearch" size="small">查询</el-button>
-          <el-button icon="el-icon-refresh" @click="resetSearch" size="small">重置</el-button>
+          <el-button type="primary" icon="el-icon-search" @click="handleSearch">查询</el-button>
+          <el-button icon="el-icon-refresh" @click="resetSearch">重置</el-button>
         </el-form-item>
       </el-form>
 
@@ -29,32 +25,33 @@
       <el-table
         :data="userList"
         v-loading="loading"
-        style="width: 100%;"
+        style="width: 100%"
         border
-        stripe
-        highlight-current-row
-        height="calc(100vh - 320px)"
       >
         <el-table-column prop="id" label="ID" width="80" align="center"></el-table-column>
-        <el-table-column prop="username" label="用户名" align="center" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="username" label="用户名" align="center"></el-table-column>
         <el-table-column prop="email" label="邮箱" align="center" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="role" label="角色" align="center" show-overflow-tooltip></el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="角色" align="center">
+          <template slot-scope="scope">
+            <el-tag size="small" v-for="roleItem in scope.row.role ? scope.row.role.split(',') : ['-']" :key="roleItem" style="margin-right: 5px;">{{ roleItem }}</el-tag>
+          </template>
+        </el-table-column>
+        <!-- Timestamps can be added if available in API response -->
+        <!-- <el-table-column prop="createdAt" label="创建时间" align="center" :formatter="formatDate"></el-table-column> -->
+        <!-- <el-table-column prop="updatedAt" label="更新时间" align="center" :formatter="formatDate"></el-table-column> -->
+        <el-table-column label="操作" width="200" align="center">
           <template slot-scope="scope">
             <el-button
               size="mini"
               type="primary"
-              plain
               icon="el-icon-edit"
               @click="handleEditUser(scope.row)"
             >编辑</el-button>
             <el-button
               size="mini"
               type="danger"
-              plain
               icon="el-icon-delete"
               @click="handleDeleteUser(scope.row)"
-              :disabled="scope.row.username === 'admin'"
             >删除</el-button>
           </template>
         </el-table-column>
@@ -62,7 +59,7 @@
 
       <!-- 分页组件 -->
       <el-pagination
-        class="pagination-container"
+        style="margin-top: 20px; text-align: right;"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         :current-page="pagination.currentPage"
@@ -77,51 +74,70 @@
     <el-dialog
       :title="dialogTitle"
       :visible.sync="dialogVisible"
-      width="500px"
+      width="50%"
       @close="resetForm('userForm')"
       :close-on-click-modal="false"
-      class="modern-dialog"
-      append-to-body
-      top="10vh"
     >
-      <el-form :model="userForm" :rules="userRules" ref="userForm" label-width="80px" class="dialog-form">
+      <el-form :model="userForm" :rules="userRules" ref="userForm" label-width="100px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="userForm.username" placeholder="请输入用户名"></el-input>
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="userForm.email" placeholder="请输入邮箱"></el-input>
         </el-form-item>
-        <el-form-item label="密码" prop="password" v-if="!userForm.id">
-          <el-input type="password" v-model="userForm.password" placeholder="请输入密码 (新增时必填)"></el-input>
+        <el-form-item v-if="!userForm.id || isChangingPassword" label="密码" prop="password">
+          <el-input type="password" v-model="userForm.password" placeholder="请输入密码" show-password></el-input>
         </el-form-item>
-         <el-form-item label="新密码" prop="newPassword" v-if="userForm.id">
-          <el-input type="password" v-model="userForm.newPassword" placeholder="留空则不修改密码"></el-input>
+        <el-form-item v-if="!userForm.id || isChangingPassword" label="确认密码" prop="confirmPassword">
+          <el-input type="password" v-model="userForm.confirmPassword" placeholder="请再次输入密码" show-password></el-input>
         </el-form-item>
         <el-form-item label="角色" prop="role">
-          <!-- 简单文本输入，未来可改为下拉选择预定义角色 -->
-          <el-input v-model="userForm.role" placeholder="请输入角色 (例如: ROLE_USER,ROLE_ADMIN)"></el-input>
+          <el-input v-model="userForm.role" placeholder="请输入角色，多个角色用逗号分隔 (例如 ADMIN,USER)"></el-input>
+        </el-form-item>
+        <el-form-item v-if="userForm.id">
+            <el-checkbox v-model="isChangingPassword">修改密码</el-checkbox>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false" size="small">取 消</el-button>
-        <el-button type="primary" @click="submitUserForm" :loading="submitLoading" size="small">确 定</el-button>
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitUserForm" :loading="submitLoading">确 定</el-button>
       </span>
     </el-dialog>
-
   </div>
 </template>
 
 <script>
-import { getUsers, createUser, updateUser, deleteUser } from '@/api/user';
+import { getUsers, createUser, updateUser, deleteUser, getUserById } from '@/api/user';
+// import { parseTime } from '@/utils'; // If using date formatting
 
 export default {
   name: "UserManagementView",
   data() {
     const validatePassword = (rule, value, callback) => {
-      if (!this.userForm.id && !value) { // Required for new user
+      if (this.userForm.id && !this.isChangingPassword) { // Editing user, not changing password
+        callback();
+        return;
+      }
+      if (!value) {
         callback(new Error('请输入密码'));
-      } else if (value && value.length < 6) {
+      } else if (value.length < 6) {
         callback(new Error('密码长度不能少于6位'));
+      } else {
+        if (this.userForm.confirmPassword) {
+          this.$refs.userForm.validateField('confirmPassword');
+        }
+        callback();
+      }
+    };
+    const validateConfirmPassword = (rule, value, callback) => {
+      if (this.userForm.id && !this.isChangingPassword) { // Editing user, not changing password
+        callback();
+        return;
+      }
+      if (!value) {
+        callback(new Error('请再次输入密码'));
+      } else if (value !== this.userForm.password) {
+        callback(new Error('两次输入密码不一致!'));
       } else {
         callback();
       }
@@ -133,7 +149,7 @@ export default {
       searchParams: {
         username: "",
         email: "",
-        role: "",
+        // role: "" // Add if needed
       },
       pagination: {
         currentPage: 1,
@@ -146,73 +162,81 @@ export default {
         id: null,
         username: "",
         email: "",
-        password: "", // For new user
-        newPassword: "", // For updating existing user's password
-        role: "",
+        password: "",
+        confirmPassword: "",
+        role: "", // e.g., "USER" or "ADMIN,USER"
       },
+      isChangingPassword: false, // For edit mode
       userRules: {
         username: [
-          { required: true, message: '请输入用户名', trigger: 'blur' },
+          { required: true, message: "请输入用户名", trigger: "blur" },
           { min: 3, max: 50, message: '长度在 3 到 50 个字符', trigger: 'blur' }
         ],
         email: [
-          { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-          { type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change'] }
+          { required: true, message: "请输入邮箱", trigger: "blur" },
+          { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] }
         ],
-        password: [ // Only for new user creation
-          { validator: validatePassword, trigger: 'blur' }
+        password: [
+          { validator: validatePassword, trigger: "blur" }
         ],
-        newPassword: [ // Only for editing user
-          { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+        confirmPassword: [
+          { validator: validateConfirmPassword, trigger: "blur" }
         ],
         role: [
-          { required: true, message: '请输入角色', trigger: 'blur' }
+          // { required: true, message: "请输入角色", trigger: "blur" } // Role can be optional or have default
         ],
-      }
+      },
     };
   },
   created() {
     this.fetchUserList();
   },
   methods: {
+    // formatDate(row, column, cellValue) {
+    //   if (!cellValue) return '';
+    //   return parseTime(cellValue, '{y}-{m}-{d} {h}:{i}');
+    // },
     async fetchUserList() {
       this.loading = true;
       try {
-        const queryParams = {
+        const params = {
           page: this.pagination.currentPage - 1,
           size: this.pagination.pageSize,
           sort: 'id,asc',
-          ...(this.searchParams.username && { username: this.searchParams.username }),
-          ...(this.searchParams.email && { email: this.searchParams.email }),
-          ...(this.searchParams.role && { role: this.searchParams.role }),
+          username: this.searchParams.username || null,
+          email: this.searchParams.email || null,
+          // role: this.searchParams.role || null, // Add if API supports role filtering
         };
-        for (const key in queryParams) {
-          if (queryParams[key] === null || queryParams[key] === '') {
-            delete queryParams[key];
+        // Remove null or empty params
+        Object.keys(params).forEach(key => {
+          if (params[key] === null || params[key] === '') {
+            delete params[key];
           }
-        }
-        const response = await getUsers(queryParams);
+        });
 
-        // Handle different possible response structures
-        if (response && response.records !== undefined && response.total !== undefined) {
-          // Expected PageResponseDto structure (as per API说明.md)
-          this.userList = response.records || [];
-          this.pagination.total = response.total || 0;
-        } else if (Array.isArray(response)) {
-          // Direct array response (as per Postman test)
+        const response = await getUsers(params);
+
+        if (Array.isArray(response)) {
+          // Handle direct array response
           this.userList = response;
-          // If backend sends a direct array, it's not paginated in the standard way.
-          // We can set total to the length of the current array for client-side display,
-          // but true server-side pagination info is missing.
-          this.pagination.total = response.length;
-          console.warn("UserManagementView: Received a direct array from /api/users. Pagination might not reflect total server-side records if this is a partial list.");
+          this.pagination.total = response.length; 
+          // Note: Client-side pagination might be needed if the API always returns all users
+          // and you still want to paginate on the frontend.
+          // For now, this assumes the API might return a subset based on backend logic,
+          // or if not, it displays all returned users.
+          // If true client-side pagination is needed for a large flat list,
+          // the slicing logic would be applied here.
+        } else if (response && (response.content || response.records)) {
+          // Handle PageResponseDto structure
+          this.userList = response.content || response.records || [];
+          this.pagination.total = response.totalElements || response.total || 0;
         } else {
-          this.$message.error('获取用户列表数据格式不正确');
+          this.$message.error("获取用户列表失败：响应格式不正确。");
           this.userList = [];
           this.pagination.total = 0;
         }
       } catch (error) {
-        this.$message.error('获取用户列表失败: ' + (error.message || '请稍后再试'));
+        this.$message.error("获取用户列表失败: " + (error.response?.data?.message || error.message));
         this.userList = [];
         this.pagination.total = 0;
       } finally {
@@ -227,80 +251,88 @@ export default {
       this.searchParams = {
         username: "",
         email: "",
-        role: "",
+        // role: ""
       };
       this.handleSearch();
     },
     handleAddUser() {
       this.dialogTitle = "新增用户";
-      this.resetForm('userForm');
-      this.userForm.id = null; // Ensure ID is null for add
+      this.isChangingPassword = false; // Not relevant for new user, but password fields will show
+      this.resetForm('userForm'); // Resets form and sets id to null
       this.dialogVisible = true;
     },
-    handleEditUser(row) {
+    async handleEditUser(row) {
       this.dialogTitle = "编辑用户";
-      this.userForm = { ...row, password: '', newPassword: '' }; // Copy row data, clear passwords
-      this.dialogVisible = true;
+      this.isChangingPassword = false; // User must check box to change password
+      try {
+        const userData = await getUserById(row.id);
+        this.userForm = {
+          id: userData.id,
+          username: userData.username,
+          email: userData.email,
+          role: userData.role || "",
+          password: "", // Clear password fields for edit
+          confirmPassword: "",
+        };
+        this.dialogVisible = true;
+      } catch (error) {
+        this.$message.error("获取用户信息失败: " + (error.response?.data?.message || error.message));
+      }
     },
     handleDeleteUser(row) {
-      if (row.username === 'admin') {
-        this.$message.warning('不能删除admin用户');
-        return;
-      }
-      this.$confirm(`确定删除用户 "${row.username}"?`, "提示", {
-        confirmButtonText: "确定",
+      this.$confirm(`确定删除用户 "${row.username}"? 此操作不可恢复。`, "提示", {
+        confirmButtonText: "确定删除",
         cancelButtonText: "取消",
         type: "warning",
-      }).then(async () => {
-        try {
-          await deleteUser(row.id);
-          this.$message.success("删除成功!");
-          if (this.userList.length === 1 && this.pagination.currentPage > 1) {
-            this.pagination.currentPage--;
+      })
+        .then(async () => {
+          try {
+            await deleteUser(row.id);
+            this.$message.success("删除成功!");
+            if (this.userList.length === 1 && this.pagination.currentPage > 1) {
+                this.pagination.currentPage--;
+            }
+            this.fetchUserList();
+          } catch (error) {
+            this.$message.error("删除失败: " + (error.response?.data?.message || error.message));
           }
-          this.fetchUserList();
-        } catch (error) {
-          this.$message.error("删除失败: " + (error.message || '请重试'));
-        }
-      }).catch(() => {
-        this.$message.info("已取消删除");
-      });
+        })
+        .catch(() => {
+          this.$message.info("已取消删除");
+        });
     },
     submitUserForm() {
       this.$refs.userForm.validate(async (valid) => {
         if (valid) {
           this.submitLoading = true;
-          const userData = { ...this.userForm };
+          const payload = {
+            username: this.userForm.username,
+            email: this.userForm.email,
+            role: this.userForm.role || null, // Send null if empty, or backend handles empty string
+          };
 
-          if (!userData.id) { // Creating new user
-            if (!userData.password) {
-              this.$message.error('新增用户时密码不能为空');
-              this.submitLoading = false;
-              return;
+          if (this.userForm.id) { // Editing
+            payload.id = this.userForm.id;
+            if (this.isChangingPassword && this.userForm.password) {
+              payload.password = this.userForm.password;
             }
-          } else { // Updating existing user
-            // If newPassword is set, use it as password, otherwise remove password field
-            if (userData.newPassword && userData.newPassword.trim() !== '') {
-              userData.password = userData.newPassword;
-            } else {
-              delete userData.password; // Don't send empty password for update if not changing
-            }
+          } else { // Creating
+            payload.password = this.userForm.password;
           }
-          delete userData.newPassword; // Not part of UserDto for backend
-
+          
           try {
-            if (userData.id) { // Update
-              await updateUser(userData.id, userData);
-              this.$message.success("更新成功!");
-            } else { // Create
-              await createUser(userData);
-              this.$message.success("新增成功!");
+            if (payload.id) {
+              await updateUser(payload.id, payload);
+              this.$message.success("用户更新成功!");
+            } else {
+              await createUser(payload);
+              this.$message.success("用户新增成功!");
             }
             this.dialogVisible = false;
             this.fetchUserList();
           } catch (error) {
-             const errorMsg = error.response?.data?.message || error.message || (userData.id ? '更新失败' : '新增失败');
-            this.$message.error(errorMsg);
+             const errorMsg = error.response?.data?.message || error.message || (payload.id ? '更新失败' : '新增失败');
+             this.$message.error(errorMsg);
           } finally {
             this.submitLoading = false;
           }
@@ -311,14 +343,15 @@ export default {
       });
     },
     resetForm(formName) {
-      this.userForm = { // Reset to initial state
+      this.userForm = {
         id: null,
         username: "",
         email: "",
         password: "",
-        newPassword: "",
+        confirmPassword: "",
         role: "",
       };
+      this.isChangingPassword = false;
       if (this.$refs[formName]) {
         this.$refs[formName].resetFields();
         this.$refs[formName].clearValidate();
@@ -326,14 +359,14 @@ export default {
     },
     handleSizeChange(val) {
       this.pagination.pageSize = val;
-      this.pagination.currentPage = 1;
+      this.pagination.currentPage = 1; // Reset to first page
       this.fetchUserList();
     },
     handleCurrentChange(val) {
       this.pagination.currentPage = val;
       this.fetchUserList();
     },
-  }
+  },
 };
 </script>
 
@@ -341,109 +374,13 @@ export default {
 .user-management-container {
   padding: 20px;
 }
-
-.page-card {
-  border-radius: 8px;
-  /* margin-bottom: 20px; /* Optional: if there's more content below this card in the container */
+.box-card {
+  margin-bottom: 20px;
+  min-height: calc(100vh - 130px); /* Adjust based on your layout's header/footer height */
 }
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-title-with-icon {
-  display: flex;
-  align-items: center;
-  font-weight: 600;
-  font-size: 16px;
-  color: #303133;
-}
-
-.header-icon {
-  margin-right: 8px;
-  color: #409EFF; /* Element UI primary color for icons */
-}
-
-.search-form .el-form-item {
-  margin-bottom: 10px;
-}
-
 .mb-20 {
   margin-bottom: 20px;
 }
-
-.pagination-container {
-  margin-top: 20px;
-  text-align: right;
-}
-
-/* Modern Dialog Styles */
-.modern-dialog >>> .el-dialog {
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,.1);
-}
-
-.modern-dialog >>> .el-dialog__header {
-  padding: 15px 20px;
-  border-bottom: 1px solid #ebeef5;
-  background-color: #f5f7fa;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-}
-
-.modern-dialog >>> .el-dialog__title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.modern-dialog >>> .el-dialog__close {
-  font-size: 18px;
-  font-weight: bold;
-}
-.modern-dialog >>> .el-dialog__close:hover {
-  color: #409EFF;
-}
-
-
-.modern-dialog >>> .el-dialog__body {
-  padding: 25px 20px;
-}
-
-.dialog-form .el-input__inner,
-.dialog-form .el-textarea__inner {
-  border-radius: 4px;
-}
-.dialog-form .el-input__inner:focus,
-.dialog-form .el-textarea__inner:focus {
-  border-color: #409EFF;
-}
-
-
-.modern-dialog >>> .el-dialog__footer {
-  padding: 10px 20px 15px;
-  border-top: 1px solid #ebeef5;
-  text-align: right;
-}
-
-.modern-dialog .dialog-footer .el-button {
-  padding: 8px 15px;
-  border-radius: 4px;
-}
-.modern-dialog .dialog-footer .el-button--primary {
-    background-color: #409EFF;
-    border-color: #409EFF;
-}
-.modern-dialog .dialog-footer .el-button--primary:hover {
-    background-color: #66b1ff;
-    border-color: #66b1ff;
-}
-.modern-dialog .dialog-footer .el-button:hover {
-  opacity: 0.8;
-}
-
 .clearfix:before,
 .clearfix:after {
   display: table;
@@ -451,5 +388,8 @@ export default {
 }
 .clearfix:after {
   clear: both;
+}
+.dialog-footer {
+  text-align: right;
 }
 </style>
