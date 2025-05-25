@@ -105,28 +105,18 @@ export default {
   beforeDestroy() {
     if (this.energyChartInstance) {
       this.energyChartInstance.dispose();
+      this.energyChartInstance = null;
     }
     if (this.deviceStatusChartInstance) {
       this.deviceStatusChartInstance.dispose();
+      this.deviceStatusChartInstance = null;
     }
   },
   methods: {
     async fetchDashboardData() {
       this.isLoading = true;
-      try {
-        const response = await api.dashboard.getDashboardSummary(); // 使用API模块
-        this.dashboardSummary = response.data; // 假设API响应直接是数据对象
-        
-        this.$nextTick(() => {
-          this.initEnergyChart();
-          this.initDeviceStatusChart();
-        });
-
-      } catch (error) {
-        console.error("获取仪表盘数据失败:", error);
-        this.$message.error('获取仪表盘数据失败，请稍后重试。');
-        // 可以设置一些默认值或错误状态下的dashboardSummary
-        this.dashboardSummary = { // 重置或设为错误状态的默认值
+      // 使用默认值初始化 dashboardSummary，以防API调用失败时模板访问undefined属性
+      this.dashboardSummary = {
             onlineDeviceCount: 0, offlineDeviceCount: 0, maintenanceDeviceCount: 0, faultyDeviceCount: 0,
             realtimeElectricityPower: 0, realtimeElectricityConsumption: 0,
             realtimeWaterPower: 0, realtimeWaterConsumption: 0,
@@ -135,30 +125,96 @@ export default {
             last7DaysWaterConsumption: Array(7).fill({date: 'N/A', consumption: 0}),
             last7DaysGasConsumption: Array(7).fill({date: 'N/A', consumption: 0}),
             lastUpdatedAt: new Date().toISOString(),
-        };
-        // 即使出错，也尝试初始化图表为空状态或提示
+      };
+
+      try {
+        const response = await api.dashboard.getDashboardSummary();
+        console.log("Full API Response (which should be data object directly):", response); 
+
+        // 检查 response 是否有效 (直接是数据对象)
+        if (response && typeof response === 'object' && !Array.isArray(response)) { // Ensure it's an object, not an array or null
+          this.dashboardSummary = response; // response is already the data object
+          console.log("Assigned dashboardSummary from API:", JSON.stringify(this.dashboardSummary, null, 2));
+        } else {
+          console.error("API response is missing, invalid, or not an object. Response:", response);
+          this.$message.error('未能获取有效的仪表盘数据格式。');
+          // dashboardSummary 已经有默认值，图表会用默认值初始化
+        }
+
+      } catch (error) {
+        console.error("获取仪表盘数据失败 (catch block):", error);
+        if (error.response) {
+          // Axios错误对象包含response属性
+          console.error("Error response data:", error.response.data);
+          console.error("Error response status:", error.response.status);
+        } else if (error.request) {
+          // 请求已发出但没有收到响应
+          console.error("Error request:", error.request);
+        } else {
+          // 其他错误
+          console.error('Error message:', error.message);
+        }
+        this.$message.error('获取仪表盘数据失败，请检查网络或联系管理员。');
+        // dashboardSummary 已经有默认值，图表会用默认值初始化
+      } finally {
+        this.isLoading = false;
+        // 确保在isLoading为false且DOM更新后初始化图表
         this.$nextTick(() => {
           this.initEnergyChart();
           this.initDeviceStatusChart();
         });
-      } finally {
-        this.isLoading = false;
       }
     },
     initEnergyChart() {
-      if (!this.$refs.energyChart) return;
+      if (!this.$refs.energyChart) {
+        console.warn("Energy chart ref ($refs.energyChart) not found in initEnergyChart. DOM might not be ready or ref name is incorrect.");
+        return;
+      }
       if (this.energyChartInstance) {
         this.energyChartInstance.dispose();
       }
       this.energyChartInstance = this.$echarts.init(this.$refs.energyChart);
 
-      const dates = (this.dashboardSummary.last7DaysElectricityConsumption || []).map(item => {
-        const parts = item.date.split('-');
-        return `${parts[1]}-${parts[2]}`; // MM-DD format
+      let dates = [];
+      let electricityData = [];
+      let waterData = [];
+      let gasData = [];
+
+      // 使用安全的方式访问可能不存在的属性，并提供默认值
+      const elecCons = (this.dashboardSummary && this.dashboardSummary.last7DaysElectricityConsumption) || [];
+      dates = elecCons.map(item => {
+        if (item && typeof item.date === 'string') {
+          const parts = item.date.split('-');
+          return parts.length >= 3 ? `${parts[1]}-${parts[2]}` : 'N/A';
+        }
+        return 'N/A';
       });
-      const electricityData = (this.dashboardSummary.last7DaysElectricityConsumption || []).map(item => item.consumption.toFixed(2));
-      const waterData = (this.dashboardSummary.last7DaysWaterConsumption || []).map(item => item.consumption.toFixed(2));
-      const gasData = (this.dashboardSummary.last7DaysGasConsumption || []).map(item => item.consumption.toFixed(2));
+      electricityData = elecCons.map(item => 
+        (item && typeof item.consumption === 'number' ? item.consumption.toFixed(2) : '0.00')
+      );
+      if (elecCons.length === 0 && dates.length === 0) { // 如果源数据为空，填充默认
+          dates = Array(7).fill('N/A');
+          electricityData = Array(7).fill('0.00');
+      }
+
+
+      const waterCons = (this.dashboardSummary && this.dashboardSummary.last7DaysWaterConsumption) || [];
+      waterData = waterCons.map(item => 
+        (item && typeof item.consumption === 'number' ? item.consumption.toFixed(2) : '0.00')
+      );
+       if (waterCons.length === 0) {
+          waterData = Array(7).fill('0.00');
+      }
+      
+      const gasCons = (this.dashboardSummary && this.dashboardSummary.last7DaysGasConsumption) || [];
+      gasData = gasCons.map(item => 
+        (item && typeof item.consumption === 'number' ? item.consumption.toFixed(2) : '0.00')
+      );
+      if (gasCons.length === 0) {
+          gasData = Array(7).fill('0.00');
+      }
+      
+      console.log("Energy Chart Data for ECharts:", { dates, electricityData, waterData, gasData });
 
       const option = {
         tooltip: {
@@ -203,14 +259,25 @@ export default {
           }
         ]
       };
-      this.energyChartInstance.setOption(option);
+      this.energyChartInstance.setOption(option, true); // true for notMerge
     },
     initDeviceStatusChart() {
-      if (!this.$refs.deviceStatusChart) return;
+      if (!this.$refs.deviceStatusChart) {
+        console.warn("Device status chart ref ($refs.deviceStatusChart) not found in initDeviceStatusChart. DOM might not be ready or ref name is incorrect.");
+        return;
+      }
       if (this.deviceStatusChartInstance) {
         this.deviceStatusChartInstance.dispose();
       }
       this.deviceStatusChartInstance = this.$echarts.init(this.$refs.deviceStatusChart);
+
+      const online = (this.dashboardSummary && typeof this.dashboardSummary.onlineDeviceCount === 'number') ? this.dashboardSummary.onlineDeviceCount : 0;
+      const offline = (this.dashboardSummary && typeof this.dashboardSummary.offlineDeviceCount === 'number') ? this.dashboardSummary.offlineDeviceCount : 0;
+      const faulty = (this.dashboardSummary && typeof this.dashboardSummary.faultyDeviceCount === 'number') ? this.dashboardSummary.faultyDeviceCount : 0;
+      const maintenance = (this.dashboardSummary && typeof this.dashboardSummary.maintenanceDeviceCount === 'number') ? this.dashboardSummary.maintenanceDeviceCount : 0;
+
+      console.log("Device Status Chart Data for ECharts:", { online, offline, faulty, maintenance });
+
       const option = {
         tooltip: {
           trigger: 'item',
@@ -242,23 +309,35 @@ export default {
               show: false
             },
             data: [
-              { value: this.dashboardSummary.onlineDeviceCount, name: '在线' },
-              { value: this.dashboardSummary.offlineDeviceCount, name: '离线' },
-              { value: this.dashboardSummary.faultyDeviceCount, name: '故障' },
-              { value: this.dashboardSummary.maintenanceDeviceCount, name: '维护中' }
+              { value: online, name: '在线' },
+              { value: offline, name: '离线' },
+              { value: faulty, name: '故障' },
+              { value: maintenance, name: '维护中' }
             ]
           }
         ]
       };
-      this.deviceStatusChartInstance.setOption(option);
+      if (online === 0 && offline === 0 && faulty === 0 && maintenance === 0) {
+        console.warn("All device status counts are zero. Pie chart might appear empty or show 'No Data'.");
+      }
+      this.deviceStatusChartInstance.setOption(option, true); // true for notMerge
     },
     navigateTo(path) {
       this.$router.push(path);
     },
     formatLastUpdate(isoDateTime) {
       if (!isoDateTime) return 'N/A';
-      const date = new Date(isoDateTime);
-      return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      try {
+        const date = new Date(isoDateTime);
+        if (isNaN(date.getTime())) {
+            console.warn("Invalid date for formatLastUpdate:", isoDateTime);
+            return 'N/A';
+        }
+        return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      } catch (e) {
+        console.error("Error formatting date:", isoDateTime, e);
+        return 'N/A';
+      }
     }
   },
 };
