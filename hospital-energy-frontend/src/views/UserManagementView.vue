@@ -2,7 +2,9 @@
   <div class="user-management-container">
     <el-card class="box-card page-card" shadow="hover">
       <div slot="header" class="clearfix card-header">
-        <span>用户列表</span>
+        <span class="header-title-with-icon">
+          <i class="el-icon-user-solid header-icon"></i>用户列表
+        </span>
         <el-button style="float: right;" type="primary" icon="el-icon-plus" @click="handleAddUser" size="small">新增用户</el-button>
       </div>
 
@@ -180,22 +182,35 @@ export default {
           page: this.pagination.currentPage - 1,
           size: this.pagination.pageSize,
           sort: 'id,asc',
-          // Add search params if they are not empty
-          // Backend API must support these query parameters for filtering to work.
-          // If search doesn't filter, check backend implementation of GET /api/users.
           ...(this.searchParams.username && { username: this.searchParams.username }),
           ...(this.searchParams.email && { email: this.searchParams.email }),
           ...(this.searchParams.role && { role: this.searchParams.role }),
         };
-        // Remove null or empty string parameters
         for (const key in queryParams) {
           if (queryParams[key] === null || queryParams[key] === '') {
             delete queryParams[key];
           }
         }
         const response = await getUsers(queryParams);
-        this.userList = response.records || [];
-        this.pagination.total = response.total || 0;
+
+        // Handle different possible response structures
+        if (response && response.records !== undefined && response.total !== undefined) {
+          // Expected PageResponseDto structure (as per API说明.md)
+          this.userList = response.records || [];
+          this.pagination.total = response.total || 0;
+        } else if (Array.isArray(response)) {
+          // Direct array response (as per Postman test)
+          this.userList = response;
+          // If backend sends a direct array, it's not paginated in the standard way.
+          // We can set total to the length of the current array for client-side display,
+          // but true server-side pagination info is missing.
+          this.pagination.total = response.length;
+          console.warn("UserManagementView: Received a direct array from /api/users. Pagination might not reflect total server-side records if this is a partial list.");
+        } else {
+          this.$message.error('获取用户列表数据格式不正确');
+          this.userList = [];
+          this.pagination.total = 0;
+        }
       } catch (error) {
         this.$message.error('获取用户列表失败: ' + (error.message || '请稍后再试'));
         this.userList = [];
@@ -329,12 +344,26 @@ export default {
 
 .page-card {
   border-radius: 8px;
+  /* margin-bottom: 20px; /* Optional: if there's more content below this card in the container */
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-title-with-icon {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 16px;
+  color: #303133;
+}
+
+.header-icon {
+  margin-right: 8px;
+  color: #409EFF; /* Element UI primary color for icons */
 }
 
 .search-form .el-form-item {

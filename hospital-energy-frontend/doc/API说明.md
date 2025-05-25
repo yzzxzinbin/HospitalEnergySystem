@@ -6,7 +6,7 @@
 *   **POST** `/api/auth/login`
     *   **说明:** 用户使用用户名和密码进行登录。
     *   **请求体:** `LoginRequestDto` (包含 `username` 和 `password`)
-    *   **成功响应 (200 OK):** 返回 `LoginResponseDto` 对象 (包含 `token` 和 `username`)。
+    *   **成功响应 (200 OK):** 返回 `LoginResponseDto` 对象 (包含 `token`, `username`, `id`)。
     *   **失败响应 (401 Unauthorized / 403 Forbidden):** 
         *   "Invalid username or password." (凭证无效)
         *   "User account is disabled." (用户被禁用)
@@ -311,9 +311,9 @@
     *   **成功响应 (200 OK):** 返回 `EnergyDataDto` 对象列表。
     *   **失败响应 (404 Not Found):** 如果设备不存在。
 
-## 仪表盘 API
+## 7. 仪表盘 API
 
-### 1. 获取仪表盘摘要数据
+### 7.1. 获取仪表盘摘要数据
 
 *   **URL:** `/api/dashboard/summary`
 *   **Method:** `GET`
@@ -355,7 +355,7 @@
     *   **Code:** 404 Not Found
     *   **Content:** If no summary data is available.
 
-### 2. 手动刷新仪表盘摘要数据
+### 7.2. 手动刷新仪表盘摘要数据
 
 *   **URL:** `/api/dashboard/refresh`
 *   **Method:** `POST`

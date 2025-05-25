@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder; // Import PasswordEncoder
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -26,6 +27,9 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
 
     @Autowired
     private RoleRepository roleRepository; // 注入 RoleRepository
+
+    @Autowired // Inject PasswordEncoder
+    private PasswordEncoder passwordEncoder;
 
     // Method to convert User entity to UserDto
     private UserDto convertToDto(User user) {
@@ -71,7 +75,7 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
     public UserDto createUser(UserDto userDto) { // Changed parameter and return type to UserDto
         User user = convertToEntity(userDto);
         // Password encoding should happen here before saving if not handled elsewhere
-        // user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         User savedUser = userRepository.save(user);
         return convertToDto(savedUser);
     }
@@ -95,7 +99,7 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
         // Handle password update carefully - only if provided and usually re-encoded
         if (userDto.getPassword() != null && !userDto.getPassword().isEmpty()) {
             // Add password encoding logic if necessary
-            user.setPassword(userDto.getPassword());
+            user.setPassword(passwordEncoder.encode(userDto.getPassword()));
         }
         // Handle role update
         if (userDto.getRole() != null) {

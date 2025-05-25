@@ -42,8 +42,8 @@ public class AuthService {
 
         final UserDetails userDetails = userService.loadUserByUsername(loginRequestDto.getUsername());
         final String token = jwtTokenUtil.generateToken(userDetails);
-        // User user = userRepository.findByUsername(loginRequestDto.getUsername()); // 可以直接使用 userDetails.getUsername()
-        return new LoginResponseDto(token, userDetails.getUsername()); 
+        User user = userRepository.findByUsername(loginRequestDto.getUsername()); // 获取User对象以得到ID
+        return new LoginResponseDto(token, userDetails.getUsername(), user.getId()); // Pass user ID
     }
 
     private void authenticate(String username, String password) throws Exception {

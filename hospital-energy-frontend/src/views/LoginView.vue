@@ -155,28 +155,35 @@ export default {
             // Let's align with API doc: token and username
             
             let tokenValue = null;
-            let responseUsername = null; // To store username from response
+            let responseUsername = null; 
+            let responseId = null; // Variable to store id from response
 
-            if (response && response.data) { // Assuming request util returns data directly
+            if (response && response.data) { 
                 tokenValue = response.data.token;
-                responseUsername = response.data.username; // Get username from response
-            } else if (response && response.token) { // Fallback if not wrapped in .data
+                responseUsername = response.data.username; 
+                responseId = response.data.id; // Get id from response.data
+            } else if (response && response.token) { 
                 tokenValue = response.token;
                 responseUsername = response.username;
+                responseId = response.id; // Get id from response
             }
             // 也可能后端返回的 response 本身就是 data 对象，如：{ code, message, data: { token, user } }
             // 这种情况下，request.js 中的拦截器已经处理了外层包装，response 就是 data
             // 例如： if (response && typeof response.token === 'string') 
 
             if (tokenValue) {
-              // 确保存储的 token 不包含 "Bearer " 前缀，因为 request.js 会添加它
               if (tokenValue.startsWith("Bearer ")) {
                 tokenValue = tokenValue.substring(7);
               }
               setToken(tokenValue);
-              // Store username from response, or the one from form as fallback
-              // API doc says LoginResponseDto has username.
-              const userInfoToStore = { username: responseUsername || this.loginForm.username };
+
+              // Store username and id from response.
+              // The login response includes 'id' and 'username'.
+              const userInfoToStore = { 
+                username: responseUsername || this.loginForm.username,
+                id: responseId // Add the id to the stored user info
+              };
+              console.log("LoginView: Storing userInfo:", JSON.parse(JSON.stringify(userInfoToStore))); // Log what's being stored
               setUserInfo(userInfoToStore); 
               this.$router.push({ path: this.redirect || "/" });
             } else {

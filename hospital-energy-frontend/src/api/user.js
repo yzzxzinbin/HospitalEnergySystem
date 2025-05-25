@@ -44,6 +44,8 @@ export function deleteUser(id) {
 }
 
 // 获取用户角色（如果API支持）
+// Note: The endpoint /api/users/{userId}/roles is not in the provided API说明.md.
+// This function might not work as expected if the backend doesn't support it.
 export function getUserRoles(userId) {
   return request({
     url: `/api/users/${userId}/roles`, // 假设的API端点
@@ -52,6 +54,8 @@ export function getUserRoles(userId) {
 }
 
 // 分配用户角色（如果API支持）
+// Note: The endpoint /api/users/{userId}/roles is not in the provided API说明.md.
+// This function might not work as expected if the backend doesn't support it.
 export function assignUserRoles(userId, roleIds) {
   return request({
     url: `/api/users/${userId}/roles`, // 假设的API端点
@@ -61,6 +65,8 @@ export function assignUserRoles(userId, roleIds) {
 }
 
 // 修改用户状态（启用/禁用）
+// Note: The endpoint /api/users/{id}/status is not in the provided API说明.md.
+// This function might not work as expected if the backend doesn't support it.
 export function updateUserStatus(id, status) {
     return request({
         url: `/api/users/${id}/status`, // 假设的API端点
@@ -69,15 +75,7 @@ export function updateUserStatus(id, status) {
     })
 }
 
-/**
- * 修改当前登录用户的密码
- * @param {object} data 包含 oldPassword 和 newPassword
- * @returns Promise
- */
-export function changePassword(data) {
-  return request({
-    url: '/api/users/change-password', // This is an assumed dedicated endpoint
-    method: 'put', // Or POST, depending on API design
-    data
-  });
-}
+// Removed changePassword function as /api/users/change-password is not a documented endpoint.
+// User profile password changes should use updateUser with the user's ID.
+// Removed getCurrentUserProfile function as /api/users/me is not a documented endpoint.
+// User profile information should be loaded via existing auth mechanisms or getUserById if ID is known.
