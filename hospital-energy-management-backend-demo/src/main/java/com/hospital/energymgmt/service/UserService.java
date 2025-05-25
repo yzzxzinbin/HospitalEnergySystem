@@ -1,6 +1,8 @@
 package com.hospital.energymgmt.service;
 
+import com.hospital.energymgmt.model.Role;
 import com.hospital.energymgmt.model.User;
+import com.hospital.energymgmt.repository.RoleRepository;
 import com.hospital.energymgmt.repository.UserRepository;
 import com.hospital.energymgmt.dto.UserDto;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,8 +12,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService implements UserDetailsService { // 实现 UserDetailsService
@@ -19,24 +24,47 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RoleRepository roleRepository; // 注入 RoleRepository
+
     // Method to convert User entity to UserDto
     private UserDto convertToDto(User user) {
-        if (user == null) return null;
+        if (user == null) {
+            return null; // 或者根据需要抛出异常
+        }
         return new UserDto(user);
     }
 
     // Method to convert UserDto to User entity
     private User convertToEntity(UserDto userDto) {
-        if (userDto == null) return null;
+        if (userDto == null) {
+            return null; // 或者根据需要抛出异常
+        }
         User user = new User();
         user.setId(userDto.getId());
         user.setUsername(userDto.getUsername());
         user.setEmail(userDto.getEmail());
-        user.setPassword(userDto.getPassword()); // Assuming password needs to be set from DTO
-        // Role conversion needs to be handled carefully based on how roles are managed.
-        // For simplicity, if UserDto.role is a String, you might need to fetch Role entity by name.
-        // This part is highly dependent on your Role entity and how you want to manage roles.
-        // Example: if (userDto.getRole() != null) { /* fetch/set Role entities */ }
+        user.setPassword(userDto.getPassword());
+        // 处理角色转换
+        if (userDto.getRole() != null && !userDto.getRole().isEmpty()) {
+            Set<Role> roles = new HashSet<>();
+            // 假设 UserDto 中的 role 是一个以逗号分隔的角色名称字符串
+            String[] roleNames = userDto.getRole().split(",");
+            for (String roleName : roleNames) {
+                Role role = roleRepository.findByName(roleName.trim())
+                        .orElseGet(() -> {
+                            Role newRole = new Role(roleName.trim());
+                            // 如果希望在找不到角色时创建新角色，则需要保存它
+                            // return roleRepository.save(newRole); 
+                            // 或者，如果角色必须预先存在，则抛出异常或记录错误
+                            // throw new RuntimeException("Role not found: " + roleName.trim());
+                            return newRole; // 如果角色不存在，则创建一个新的 Role 对象（未持久化）
+                                           // 或者根据业务逻辑决定是否持久化新角色
+                        });
+                roles.add(role);
+            }
+            user.setRoles(roles);
+        }
         return user;
     }
 
@@ -56,7 +84,7 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
     public List<UserDto> getAllUsers() { // Changed return type to List<UserDto>
         return userRepository.findAll().stream()
                 .map(this::convertToDto)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
     public UserDto updateUser(Long id, UserDto userDto) { // Changed parameter and return type to UserDto
@@ -66,10 +94,25 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
         user.setEmail(userDto.getEmail());
         // Handle password update carefully - only if provided and usually re-encoded
         if (userDto.getPassword() != null && !userDto.getPassword().isEmpty()) {
-            // user.setPassword(passwordEncoder.encode(userDto.getPassword()));
+            // Add password encoding logic if necessary
+            user.setPassword(userDto.getPassword());
         }
         // Handle role update
-        // if (userDto.getRole() != null) { /* update roles */ }
+        if (userDto.getRole() != null) {
+            Set<Role> roles = new HashSet<>();
+            String[] roleNames = userDto.getRole().split(",");
+            for (String roleName : roleNames) {
+                Role role = roleRepository.findByName(roleName.trim())
+                        .orElseGet(() -> {
+                            Role newRole = new Role(roleName.trim());
+                            // Decide if new roles should be created and saved
+                            // return roleRepository.save(newRole);
+                            return newRole; // Or throw exception if role must exist
+                        });
+                roles.add(role);
+            }
+            user.setRoles(roles);
+        }
         User updatedUser = userRepository.save(user);
         return convertToDto(updatedUser);
     }
@@ -85,6 +128,7 @@ public class UserService implements UserDetailsService { // 实现 UserDetailsSe
         if (user == null) {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }
-        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), new ArrayList<>());
+        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(),
+                new ArrayList<>()); // Customize authorities based on roles
     }
 }

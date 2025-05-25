@@ -24,14 +24,14 @@
 ### 2.1. 创建用户
 *   **POST** `/api/users`
     *   **说明:** 创建一个新用户 (通常由管理员执行)。
-    *   **请求体:** `UserDto`
-    *   **成功响应 (200 OK):** 返回创建的 `UserDto` 对象。
+    *   **请求体:** `UserDto` (包含 `username`, `password`, `email`, 可选的 `role` 字符串，例如 "ADMIN,USER")
+    *   **成功响应 (200 OK):** 返回创建的 `UserDto` 对象 (包含 `id`, `username`, `email`, `role`)。
 
 ### 2.2. 根据ID获取用户
 *   **GET** `/api/users/{id}`
     *   **说明:** 根据用户ID获取用户信息。
     *   **路径参数:** `id` (用户ID)
-    *   **成功响应 (200 OK):** 返回 `UserDto` 对象。
+    *   **成功响应 (200 OK):** 返回 `UserDto` 对象 (包含 `id`, `username`, `email`, `role`)。
     *   **失败响应 (404 Not Found):** 如果用户不存在。
 
 ### 2.3. 获取所有用户
@@ -41,14 +41,14 @@
         *   `page` (可选, 默认为 0): 页码 (0-indexed)。
         *   `size` (可选, 默认为 10): 每页记录数。
         *   `sort` (可选, 默认为 "id,asc"): 排序字段和方向。格式: `fieldName,(asc|desc)`。例如: `username,desc`。
-    *   **成功响应 (200 OK):** 返回 `PageResponseDto<UserDto>` 对象，包含 `records` (用户列表), `total` (总记录数), `currentPage`, `pageSize`, `totalPages`。
+    *   **成功响应 (200 OK):** 返回 `PageResponseDto<UserDto>` 对象，其中 `UserDto` 包含 `id`, `username`, `email`, `role`。
 
 ### 2.4. 更新用户
 *   **PUT** `/api/users/{id}`
     *   **说明:** 更新指定ID的用户信息。
     *   **路径参数:** `id` (用户ID)
-    *   **请求体:** `UserDto`
-    *   **成功响应 (200 OK):** 返回更新后的 `UserDto` 对象。
+    *   **请求体:** `UserDto` (包含需要更新的字段，例如 `username`, `email`, `password`, `role`)
+    *   **成功响应 (200 OK):** 返回更新后的 `UserDto` 对象 (包含 `id`, `username`, `email`, `role`)。
     *   **失败响应 (404 Not Found):** 如果用户不存在。
 
 ### 2.5. 删除用户
