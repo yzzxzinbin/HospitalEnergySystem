@@ -34,6 +34,14 @@
             <el-option label="按设备类型对比" value="deviceType"></el-option>
           </el-select>
         </el-form-item>
+        <el-form-item label="时间聚合" v-if="filters.analysisType === 'trend'">
+          <el-select v-model="filters.timeAggregation" placeholder="选择聚合方式" style="width: 150px;">
+            <el-option label="按小时" value="hourly"></el-option>
+            <el-option label="按日" value="daily"></el-option>
+            <el-option label="按月" value="monthly"></el-option>
+            <el-option label="按年" value="yearly"></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="el-icon-search" @click="handleAnalysis" :loading="loading">分析</el-button>
         </el-form-item>
@@ -93,6 +101,7 @@ export default {
         dateRange: [], // [startDate, endDate]
         energyType: 'ELECTRICITY', // Default
         analysisType: 'trend', // Default
+        timeAggregation: 'daily', // Default for trend analysis
       },
       chartTitle: '能耗分析图表',
       statistics: {
@@ -134,7 +143,7 @@ export default {
     // Set default date range (e.g., last 7 days)
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 6);
+    startDate.setDate(endDate.getDate() - 6); // Default to daily, so 7 days is fine
     this.filters.dateRange = [
       parseTime(startDate, '{y}-{m}-{d}'),
       parseTime(endDate, '{y}-{m}-{d}')
@@ -146,12 +155,15 @@ export default {
   },
   mounted() {
     // Chart initialization will happen in handleAnalysis after data is fetched and processed
+    // Add resize listener here if you anticipate the chart instance might be created later
+    // window.addEventListener('resize', this.resizeAnalysisChart); // Moved to init
   },
   beforeDestroy() {
     if (this.analysisChartInstance) {
       this.analysisChartInstance.dispose();
       this.analysisChartInstance = null;
     }
+    window.removeEventListener('resize', this.resizeAnalysisChart); // Ensure listener is removed
   },
   methods: {
     async fetchAllMasterData() {
@@ -239,28 +251,48 @@ export default {
       const energyData = this.allEnergyData;
 
       if (this.filters.analysisType === 'trend') {
-        this.chartTitle = `${this.selectedEnergyTypeText}消耗趋势 (${this.filters.dateRange[0]} 至 ${this.filters.dateRange[1]})`;
-        // Aggregate data by day for trend
-        const dailyConsumption = {};
+        const aggregation = this.filters.timeAggregation;
+        this.chartTitle = `${this.selectedEnergyTypeText}消耗趋势 (${this.filters.dateRange[0]} 至 ${this.filters.dateRange[1]} - ${this.getAggregationText(aggregation)})`;
+        
+        const aggregatedConsumption = {};
+        let timeFormat = '{y}-{m}-{d}'; // Default for daily
+        if (aggregation === 'hourly') timeFormat = '{y}-{m}-{d} {h}:00';
+        else if (aggregation === 'monthly') timeFormat = '{y}-{m}';
+        else if (aggregation === 'yearly') timeFormat = '{y}';
+
         energyData.forEach(item => {
-          const day = parseTime(item.timestamp, '{y}-{m}-{d}');
-          if (!dailyConsumption[day]) {
-            dailyConsumption[day] = 0;
+          const timeKey = parseTime(item.timestamp, timeFormat);
+          if (!aggregatedConsumption[timeKey]) {
+            aggregatedConsumption[timeKey] = 0;
           }
-          dailyConsumption[day] += (item.consumption || 0);
+          aggregatedConsumption[timeKey] += (item.consumption || 0);
         });
 
-        const sortedDays = Object.keys(dailyConsumption).sort();
-        const chartXAxis = sortedDays;
-        const chartSeriesData = sortedDays.map(day => parseFloat(dailyConsumption[day].toFixed(2)));
+        const sortedTimeKeys = Object.keys(aggregatedConsumption).sort((a, b) => {
+          // For robust sorting, convert keys to comparable values (e.g., Date objects or padded strings)
+          if (aggregation === 'hourly') return new Date(a).getTime() - new Date(b).getTime();
+          if (aggregation === 'monthly') return new Date(a + '-01').getTime() - new Date(b + '-01').getTime();
+          if (aggregation === 'yearly') return parseInt(a) - parseInt(b);
+          return new Date(a).getTime() - new Date(b).getTime(); // Daily
+        });
+
+        const chartXAxis = sortedTimeKeys;
+        const chartSeriesData = sortedTimeKeys.map(key => parseFloat(aggregatedConsumption[key].toFixed(2)));
         
         option = {
           tooltip: { trigger: 'axis' },
-          xAxis: { type: 'category', data: chartXAxis },
-          yAxis: { type: 'value', name: `日消耗 (${this.energyTypeUnits[this.filters.energyType] || '单位'})` },
+          xAxis: { 
+            type: 'category', 
+            data: chartXAxis,
+            axisLabel: { 
+              rotate: (aggregation === 'hourly' || aggregation === 'daily') && chartXAxis.length > 10 ? 30 : 0,
+              interval: 'auto' 
+            }
+          },
+          yAxis: { type: 'value', name: `消耗 (${this.energyTypeUnits[this.filters.energyType] || '单位'})` },
           series: [{ data: chartSeriesData, type: 'line', smooth: true, name: this.selectedEnergyTypeText }],
           grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-          dataZoom: [{ type: 'slider' }, { type: 'inside' }],
+          dataZoom: [{ type: 'slider', show: true }, { type: 'inside' }],
         };
       } else if (this.filters.analysisType === 'department') {
         this.chartTitle = `${this.selectedEnergyTypeText}按部门对比 (${this.filters.dateRange[0]} 至 ${this.filters.dateRange[1]})`;
@@ -278,10 +310,14 @@ export default {
         const chartSeriesData = chartXAxis.map(dept => parseFloat(departmentConsumption[dept].toFixed(2)));
         option = {
           tooltip: { trigger: 'axis', axisPointer: { type: 'shadow'} },
-          xAxis: { type: 'category', data: chartXAxis, axisLabel: { interval: 0, rotate: 30 } },
+          xAxis: { 
+            type: 'category', 
+            data: chartXAxis, 
+            axisLabel: { interval: 0, rotate: chartXAxis.length > 5 ? 30 : 0 } 
+          },
           yAxis: { type: 'value', name: `总消耗 (${this.energyTypeUnits[this.filters.energyType] || '单位'})` },
-          series: [{ data: chartSeriesData, type: 'bar', name: this.selectedEnergyTypeText }],
-          grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+          series: [{ data: chartSeriesData, type: 'bar', barMaxWidth: '60px', name: this.selectedEnergyTypeText }],
+          grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true }, // Ensure containLabel is true
         };
       } else if (this.filters.analysisType === 'deviceType') {
         this.chartTitle = `${this.selectedEnergyTypeText}按设备类型对比 (${this.filters.dateRange[0]} 至 ${this.filters.dateRange[1]})`;
@@ -299,23 +335,31 @@ export default {
         const chartSeriesData = chartXAxis.map(type => parseFloat(deviceTypeConsumption[type].toFixed(2)));
         option = {
           tooltip: { trigger: 'axis', axisPointer: { type: 'shadow'} },
-          xAxis: { type: 'category', data: chartXAxis, axisLabel: { interval: 0, rotate: 30 } },
+          xAxis: { 
+            type: 'category', 
+            data: chartXAxis, 
+            axisLabel: { interval: 0, rotate: chartXAxis.length > 5 ? 30 : 0 } 
+          },
           yAxis: { type: 'value', name: `总消耗 (${this.energyTypeUnits[this.filters.energyType] || '单位'})` },
-          series: [{ data: chartSeriesData, type: 'bar', name: this.selectedEnergyTypeText }],
-          grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+          series: [{ data: chartSeriesData, type: 'bar', barMaxWidth: '60px', name: this.selectedEnergyTypeText }],
+          grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true }, // Ensure containLabel is true
         };
       }
 
-      if (this.$refs.analysisChart) {
-        if (!this.analysisChartInstance) {
-          this.analysisChartInstance = this.$echarts.init(this.$refs.analysisChart);
+      this.chartDataProcessed = true; // Set this flag to make the div visible via v-show
+
+      this.$nextTick(() => {
+        if (this.$refs.analysisChart) {
+          if (!this.analysisChartInstance) {
+            this.analysisChartInstance = this.$echarts.init(this.$refs.analysisChart);
+            window.addEventListener('resize', this.resizeAnalysisChart); // Add listener on first init
+          }
+          this.analysisChartInstance.setOption(option, true); // true to clear previous options
+        } else {
+            console.warn("Chart DOM element not ready for " + this.filters.analysisType);
+            // this.chartDataProcessed = false; // Potentially reset if DOM element is truly gone
         }
-        this.analysisChartInstance.setOption(option, true); // true to clear previous options
-        this.chartDataProcessed = true;
-      } else {
-          console.warn("Chart DOM element not ready for " + this.filters.analysisType);
-          this.chartDataProcessed = false;
-      }
+      });
     },
     calculateStatistics() {
         if (this.allEnergyData.length > 0) {
@@ -325,6 +369,20 @@ export default {
             this.statistics.totalConsumption = null;
             this.statistics.unit = '';
         }
+    },
+    getAggregationText(aggregation) {
+      switch (aggregation) {
+        case 'hourly': return '按小时';
+        case 'daily': return '按日';
+        case 'monthly': return '按月';
+        case 'yearly': return '按年';
+        default: return '';
+      }
+    },
+    resizeAnalysisChart() {
+      if (this.analysisChartInstance) {
+        this.analysisChartInstance.resize();
+      }
     }
   }
 };

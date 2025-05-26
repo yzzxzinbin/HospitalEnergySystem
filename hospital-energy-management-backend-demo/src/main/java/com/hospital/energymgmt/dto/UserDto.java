@@ -21,7 +21,7 @@ public class UserDto {
         this.role = role;
     }
 
-    // Constructor to convert User entity to UserDto
+    // Constructor to convert User entity/model to UserDto
     public UserDto(User user) {
         this.id = user.getId();
         this.username = user.getUsername();
