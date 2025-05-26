@@ -1,62 +1,77 @@
 <template>
   <div class="dashboard-container">
     <div v-if="isLoading" class="loading-spinner">加载中...</div>
-    <div v-else>
+    <div v-else class="dashboard-content">
       <el-row :gutter="20">
-        <el-col :span="8">
-          <el-card class="box-card">
-            <div slot="header" class="clearfix">
-              <span>能源消耗概览</span>
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-card class="box-card modern-card">
+            <div slot="header" class="clearfix card-header">
+              <span><i class="el-icon-s-data header-icon"></i>能源消耗概览</span>
             </div>
-            <div v-if="dashboardSummary">
-              <p>今日电耗: {{ dashboardSummary.realtimeElectricityConsumption.toFixed(2) }} kWh</p>
-              <p>今日水耗: {{ dashboardSummary.realtimeWaterConsumption.toFixed(2) }} m³</p>
-              <p>今日气耗: {{ dashboardSummary.realtimeGasConsumption.toFixed(2) }} m³</p>
-              <p v-if="dashboardSummary.lastUpdatedAt">数据更新于: {{ formatLastUpdate(dashboardSummary.lastUpdatedAt) }}</p>
+            <div class="card-content">
+              <p v-if="dashboardSummary">实时电耗: <strong>{{ dashboardSummary.realtimeElectricityConsumption.toFixed(2) }} kWh</strong></p>
+              <p v-if="dashboardSummary">实时水耗: <strong>{{ dashboardSummary.realtimeWaterConsumption.toFixed(2) }} m³</strong></p>
+              <p v-if="dashboardSummary">实时气耗: <strong>{{ dashboardSummary.realtimeGasConsumption.toFixed(2) }} m³</strong></p>
+              <p v-if="dashboardSummary && dashboardSummary.lastUpdatedAt" class="last-update-text">
+                数据更新于: {{ formatLastUpdate(dashboardSummary.lastUpdatedAt) }}
+              </p>
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
-          <el-card class="box-card">
-            <div slot="header" class="clearfix">
-              <span>设备状态</span>
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-card class="box-card modern-card">
+            <div slot="header" class="clearfix card-header">
+              <span><i class="el-icon-pie-chart header-icon"></i>设备状态</span>
             </div>
-            <div ref="deviceStatusChart" style="height: 160px;"></div>
+            <div class="card-content">
+              <div ref="deviceStatusChart" style="height: 180px;" class="chart-container"></div>
+            </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
-          <el-card class="box-card">
-            <div slot="header" class="clearfix">
-              <span>实时功率</span>
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-card class="box-card modern-card">
+            <div slot="header" class="clearfix card-header">
+              <span><i class="el-icon-odometer header-icon"></i>实时功率</span>
             </div>
-            <div v-if="dashboardSummary">
-              <p>电力: {{ dashboardSummary.realtimeElectricityPower.toFixed(2) }} kW</p>
-              <p>水: {{ dashboardSummary.realtimeWaterPower.toFixed(2) }} m³/h</p>
-              <p>燃气: {{ dashboardSummary.realtimeGasPower.toFixed(2) }} m³/h</p>
+            <div class="card-content">
+              <p v-if="dashboardSummary">电力: <strong>{{ dashboardSummary.realtimeElectricityPower.toFixed(2) }} kW</strong></p>
+              <p v-if="dashboardSummary">水: <strong>{{ dashboardSummary.realtimeWaterPower.toFixed(2) }} m³/h</strong></p>
+              <p v-if="dashboardSummary">燃气: <strong>{{ dashboardSummary.realtimeGasPower.toFixed(2) }} m³/h</strong></p>
             </div>
           </el-card>
         </el-col>
       </el-row>
 
       <el-row :gutter="20" style="margin-top: 20px;">
-        <el-col :span="16">
-          <el-card class="box-card">
-            <div slot="header" class="clearfix">
-              <span>近7日能耗趋势</span>
+        <el-col :xs="24" :lg="16">
+          <el-card class="box-card modern-card">
+            <div slot="header" class="clearfix card-header">
+              <span><i class="el-icon-date header-icon"></i>近7日能耗趋势</span>
             </div>
-            <div ref="energyChart" style="height: 300px;"></div>
+            <div class="card-content">
+              <div ref="energyChart" style="height: 320px;" class="chart-container"></div>
+            </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
-          <el-card class="box-card">
-            <div slot="header" class="clearfix">
-              <span>常用功能</span>
+        <el-col :xs="24" :lg="8">
+          <el-card class="box-card modern-card">
+            <div slot="header" class="clearfix card-header">
+              <span><i class="el-icon-menu header-icon"></i>常用功能</span>
             </div>
-            <el-row :gutter="10" class="quick-access">
-              <el-col :span="12" v-for="(item, index) in quickAccess" :key="index" class="quick-access-item">
-                  <el-button type="primary" plain @click="navigateTo(item.path)" :icon="item.icon">{{ item.name }}</el-button>
-              </el-col>
-            </el-row>
+            <div class="quick-access card-content">
+              <el-row :gutter="10">
+                <el-col :xs="12" :sm="12" v-for="(item, index) in quickAccess" :key="index" class="quick-access-item">
+                    <el-button 
+                      type="primary" 
+                      plain 
+                      @click="navigateTo(item.path)" 
+                      :icon="item.icon"
+                      class="quick-access-button">
+                      {{ item.name }}
+                    </el-button>
+                </el-col>
+              </el-row>
+            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -90,10 +105,10 @@ export default {
         lastUpdatedAt: null,
       },
       quickAccess: [
-        { name: '房间管理', path: '/rooms', icon: 'el-icon-office-building' },
-        { name: '设备控制', path: '/devices', icon: 'el-icon-cpu' },
-        { name: '能耗报表', path: '/energy-data', icon: 'el-icon-s-data' },
-        { name: '用户设置', path: '/profile', icon: 'el-icon-setting' },
+        { name: '房间管理', path: '/management/rooms', icon: 'el-icon-office-building' },
+        { name: '设备管理', path: '/management/devices', icon: 'el-icon-cpu' },
+        { name: '能耗数据', path: '/data/energy-data', icon: 'el-icon-s-data' },
+        { name: '能耗分析', path: '/analysis/energy-analysis', icon: 'el-icon-s-marketing' },
       ],
       energyChartInstance: null,
       deviceStatusChartInstance: null,
@@ -214,7 +229,7 @@ export default {
           gasData = Array(7).fill('0.00');
       }
       
-      console.log("Energy Chart Data for ECharts:", { dates, electricityData, waterData, gasData });
+      // console.log("Energy Chart Data for ECharts:", { dates, electricityData, waterData, gasData });
 
       const option = {
         tooltip: {
@@ -236,7 +251,10 @@ export default {
         },
         yAxis: {
           type: 'value',
-          name: '消耗量'
+          name: '消耗量',
+          nameTextStyle: {
+            padding: [0, 0, 0, 30] // Adjust padding if name is cut off
+          }
         },
         series: [
           {
@@ -276,7 +294,7 @@ export default {
       const faulty = (this.dashboardSummary && typeof this.dashboardSummary.faultyDeviceCount === 'number') ? this.dashboardSummary.faultyDeviceCount : 0;
       const maintenance = (this.dashboardSummary && typeof this.dashboardSummary.maintenanceDeviceCount === 'number') ? this.dashboardSummary.maintenanceDeviceCount : 0;
 
-      console.log("Device Status Chart Data for ECharts:", { online, offline, faulty, maintenance });
+      // console.log("Device Status Chart Data for ECharts:", { online, offline, faulty, maintenance });
 
       const option = {
         tooltip: {
@@ -285,14 +303,17 @@ export default {
         },
         legend: {
           orient: 'vertical',
-          left: 10,
+          left: 'right', // Move legend to the right
+          top: 'center', // Center vertically
+          itemGap: 10,
           data: ['在线', '离线', '故障', '维护中']
         },
         series: [
           {
             name: '设备状态',
             type: 'pie',
-            radius: ['50%', '70%'],
+            radius: ['50%', '75%'], // Make the ring slightly thicker
+            center: ['40%', '50%'], // Adjust center to make space for legend
             avoidLabelOverlap: false,
             label: {
               show: false,
@@ -301,7 +322,7 @@ export default {
             emphasis: {
               label: {
                 show: true,
-                fontSize: '16',
+                fontSize: '14', // Slightly smaller font for emphasis
                 fontWeight: 'bold'
               }
             },
@@ -309,10 +330,10 @@ export default {
               show: false
             },
             data: [
-              { value: online, name: '在线' },
-              { value: offline, name: '离线' },
-              { value: faulty, name: '故障' },
-              { value: maintenance, name: '维护中' }
+              { value: online, name: '在线', itemStyle: { color: '#67C23A' } },
+              { value: offline, name: '离线', itemStyle: { color: '#909399' } },
+              { value: faulty, name: '故障', itemStyle: { color: '#F56C6C' } },
+              { value: maintenance, name: '维护中', itemStyle: { color: '#E6A23C' } }
             ]
           }
         ]
@@ -346,18 +367,105 @@ export default {
 <style scoped>
 .dashboard-container {
   padding: 20px;
+  background-color: #f4f6f8; /* Light background for the whole page */
 }
 
 .loading-spinner {
-  text-align: center;
-  padding: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 100px); /* Adjust based on header/footer */
   font-size: 1.5em;
+  color: #555;
 }
 
-.box-card {
-  margin-bottom: 20px;
-  min-height: 200px; /* Ensure cards have a minimum height */
+.dashboard-content {
+  /* Styles for the main content area after loading */
 }
+
+.box-card.modern-card {
+  margin-bottom: 20px;
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+  border: none; /* Remove default border if any */
+  display: flex; /* Added for flex layout */
+  flex-direction: column; /* Stack header and content vertically */
+  height: 100%; /* Make card take full height of its col */
+}
+
+.card-header {
+  font-weight: bold;
+  font-size: 16px;
+  color: #303133;
+  border-bottom: 1px solid #ebeef5; /* Subtle separator */
+  padding: 15px 20px; /* Adjust padding */
+}
+
+.header-icon {
+  margin-right: 8px;
+  color: #409EFF;
+}
+
+.card-content {
+  padding: 15px 20px; /* Reduced vertical padding, kept horizontal */
+  font-size: 14px;
+  color: #606266;
+  flex-grow: 1; /* Allow content to take available space */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Align content to the top */
+}
+
+.card-content p {
+  margin: 6px 0; /* Slightly reduced margin for p tags */
+  line-height: 1.6;
+}
+.card-content p strong {
+  color: #303133;
+  font-weight: 600;
+}
+
+.last-update-text {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 10px; /* Reduced margin */
+}
+
+.chart-container {
+  width: 100%;
+  flex-grow: 1; /* Allow chart container to grow if it's the main content */
+  display: flex; /* To center chart if needed, or just to contain it */
+  align-items: center; /* Vertically center chart if its height is less than container */
+  justify-content: center; /* Horizontally center chart */
+  /* height is set inline on the chart's direct div */
+}
+.chart-container > div { /* Target the ECharts initialized div */
+    width: 100%; /* Ensure ECharts div takes full width of chart-container */
+    height: 100%; /* Ensure ECharts div takes full height of chart-container (e.g. 180px) */
+}
+
+
+.quick-access {
+  /* padding is inherited from card-content */
+}
+
+.quick-access-item {
+    margin-bottom: 12px; /* Increased margin */
+    display: flex;
+}
+
+.quick-access-button {
+    width: 100%;
+    padding-top: 12px; /* Taller buttons */
+    padding-bottom: 12px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+.quick-access-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
 
 .clearfix:before,
 .clearfix:after {
@@ -368,12 +476,26 @@ export default {
   clear: both;
 }
 
-.quick-access-item {
-    margin-bottom: 10px;
-    display: flex;
-}
+/* Responsive adjustments for column span if needed */
+@media (max-width: 768px) {
+  .el-col-sm-12 { /* Ensure cards stack on small screens */
+    margin-bottom: 20px;
+  }
+  .el-col-sm-12:last-child {
+     margin-bottom: 0; /* Remove bottom margin for the last card in a stacked row */
+  }
 
-.quick-access-item .el-button {
-    width: 100%;
+  .el-col-lg-16, .el-col-lg-8 {
+    margin-bottom: 20px;
+  }
+  .el-col-lg-8:last-child {
+    margin-bottom: 0;
+  }
+   .card-content {
+    padding: 15px; /* Consistent padding on smaller screens */
+  }
+  .quick-access-button {
+    font-size: 13px;
+  }
 }
 </style>
